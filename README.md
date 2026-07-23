@@ -1,38 +1,96 @@
-﻿This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# LexiTrace
 
-## Getting Started
+LexiTrace is a real-time citation tracing and confidence verification engine designed for AI agent validation. It acts as an automated fact-checker and citation verifier that processes agent outputs, checks them against a vector knowledge store, and flags low-confidence responses for human review.
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## 🌟 Key Features
+
+*   **FastAPI Backend:** Lightweight, asynchronous server handling agent coordination and verification queues.
+*   **AI Agent Verification Engine:** Evaluates citation source accuracy and truthfulness using dedicated LLM verification logic.
+*   **Semantic Retrieval:** Integrates ChromaDB vector store for sub-second lookup of context sources.
+*   **Celery & Redis Workers:** Handles heavy queue-based verification operations asynchronously in the background.
+*   **Next.js Frontend:** Dashboard featuring real-time verification status, chat validation utility, and low-confidence manual review queue.
+
+---
+
+## 🏗️ Project Architecture
+
+```mermaid
+graph TD
+    Client[Next.js Web Client] -->|HTTP/WebSocket| API[FastAPI Server]
+    API -->|Read/Write Queue| DB[(ChromaDB / JSON Store)]
+    API -->|Dispatch Verification| Queue[Redis Broker]
+    Queue --> Worker[Celery Worker]
+    Worker -->|Execute LLM Logic| Agent[Verification Agent]
+    Agent -->|Validate Citation| DB
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## ⚙️ Services & Component Breakdown
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 1. Backend (`/backend`)
+*   **`main.py`:** FastAPI core APIs and route handlers.
+*   **`agent.py`:** LLM agent execution flow.
+*   **`retrieval.py`:** Context search and source lookups.
+*   **`vector_store.py`:** Database connectors for ChromaDB.
+*   **`verifier.py`:** Fact-checking rules and verification methods.
+*   **`celery_tasks.py`:** Task definition for the Celery task queue.
 
-## Learn More
+### 2. Frontend (`/frontend`)
+*   **`app/chat`:** Page to submit messages and see highlighted verification results.
+*   **`app/review`:** Portal for human operators to inspect and verify low-confidence responses.
+*   **`app/status`:** Real-time health statistics dashboard.
+*   **`context/RealtimeContext.tsx`:** Manages live server sent events (SSE) or websocket state.
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🚀 Quick Start
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Prerequisites
+*   Docker & Docker Compose
+*   Node.js (v18+)
+*   Python (v3.10+)
 
-## Deploy on Vercel
+### Running with Docker Compose
+To boot up the complete environment including backend APIs, Redis, Celery workers, and Next.js frontend:
+```bash
+docker-compose up --build
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Local Development Setup
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+#### Backend Setup
+1. Navigate to backend directory:
+   ```bash
+   cd backend
+   ```
+2. Create and activate a virtual environment:
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate # Windows: .venv\Scripts\activate
+   ```
+3. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+4. Start FastAPI server:
+   ```bash
+   uvicorn main:app --reload --port 8000
+   ```
 
-
+#### Frontend Setup
+1. Navigate to frontend directory:
+   ```bash
+   cd ../frontend
+   ```
+2. Install node packages:
+   ```bash
+   npm install
+   ```
+3. Start the Next.js dev server:
+   ```bash
+   npm run dev
+   ```
+   *Frontend is now live at [http://localhost:3000](http://localhost:3000).*
