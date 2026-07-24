@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+langgraph
+langchain-openai
+qdrant-client
+sentence-transformers
+transformers
+torch
+pydantic
+unstructured[pdf]
+jinja2
+python-multipart
+cohere
+tiktoken

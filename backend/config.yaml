@@ -1,0 +1,22 @@
+version: "1.0"
+pipeline:
+  hybrid_search:
+    sparse_model: "bm25"
+    dense_model: "text-embedding-3-large"
+    rrf_k: 60
+    candidates_per_search: 20
+    reranker_model: "BAAI/bge-reranker-large"
+    top_k_final: 5
+
+  agentic_loop:
+    max_retries: 3
+    grading_llm: "gpt-4o-mini"
+    generator_llm: "gpt-4o"
+
+  citation_verification:
+    nli_model: "cross-encoder/nli-deberta-v3-base"
+    threshold: 0.75 # Minimum entailment probability required
+    on_unverified: "flag_sentence" # Options: drop_sentence, flag_sentence, fail_request
+
+  hitl_queue:
+    confidence_threshold: 0.85 # Below this, document routes to review DB
