@@ -1,0 +1,16 @@
+[
+  {
+    "id": "lc-doc-1",
+    "text": "Table 3: Q3 financial metrics.\nRevenue: $12.4M (up 8% YoY)\nNet Income: $1.8M\nOperating Margin: 14.5% (approximate count)",
+    "source_pdf": "q3_financial_report.pdf",
+    "page_number": 3,
+    "confidence_score": 0.78
+  },
+  {
+    "id": "lc-doc-2",
+    "text": "Product Development Costs\nSalaries: $4.2M\nInfrastructure: $1.1M\nLicensing: $0.3M\nTotal: $5.6M (estimates)",
+    "source_pdf": "cost_breakdown_2024.pdf",
+    "page_number": 5,
+    "confidence_score": 0.65
+  }
+]
