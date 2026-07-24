@@ -1,0 +1,131 @@
+@import "tailwindcss";
+
+:root {
+  --bg-canvas: #F7F8FA;
+  --bg-surface: #FFFFFF;
+  --bg-sidebar: #EEF2F6;
+  --border-subtle: #E2E8F0;
+  
+  --text-primary: #1E293B;
+  --text-secondary: #64748B;
+  --interactive-accent: #0F172A;
+  
+  --citation-std-bg: #E2E8F0;
+  --citation-std-text: #0F172A;
+  --warning-bg: #FEF3C7;
+  --warning-text: #78350F;
+  --critical-bg: #FEE2E2;
+  --critical-text: #991B1B;
+
+  --font-sans: 'Inter', var(--font-inter), 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'Geist Mono', monospace;
+}
+
+/* Dark mode by preference or by explicit class */
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    --bg-canvas: #020617;
+    --bg-sidebar: #0F172A;
+    --border-subtle: #1E293B;
+    
+    --text-primary: #F1F5F9;
+    --text-secondary: #94A3B8;
+    --interactive-accent: #38BDF8;
+    
+    --citation-std-bg: #1E293B;
+    --citation-std-text: #E2E8F0;
+    --warning-bg: #451A03;
+    --warning-text: #FDE68A;
+    --critical-bg: #450A0A;
+    --critical-text: #FCA5A5;
+  }
+}
+
+.dark {
+  --bg-canvas: #020617;
+  --bg-sidebar: #0F172A;
+  --border-subtle: #1E293B;
+  
+  --text-primary: #F1F5F9;
+  --text-secondary: #94A3B8;
+  --interactive-accent: #38BDF8;
+  
+  --citation-std-bg: #1E293B;
+  --citation-std-text: #E2E8F0;
+  --warning-bg: #451A03;
+  --warning-text: #FDE68A;
+  --critical-bg: #450A0A;
+  --critical-text: #FCA5A5;
+}
+
+.light {
+  --bg-canvas: #F7F8FA;
+  --bg-surface: #FFFFFF;
+  --bg-sidebar: #EEF2F6;
+  --border-subtle: #E2E8F0;
+  
+  --text-primary: #1E293B;
+  --text-secondary: #64748B;
+  --interactive-accent: #0F172A;
+  
+  --citation-std-bg: #E2E8F0;
+  --citation-std-text: #0F172A;
+  --warning-bg: #FEF3C7;
+  --warning-text: #78350F;
+  --critical-bg: #FEE2E2;
+  --critical-text: #991B1B;
+}
+
+@theme {
+  --color-bg-canvas: var(--bg-canvas);
+  --color-bg-surface: var(--bg-surface);
+  --color-bg-sidebar: var(--bg-sidebar);
+  --color-border-subtle: var(--border-subtle);
+  
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-interactive-accent: var(--interactive-accent);
+  
+  --color-citation-std-bg: var(--citation-std-bg);
+  --color-citation-std-text: var(--citation-std-text);
+  --color-warning-bg: var(--warning-bg);
+  --color-warning-text: var(--warning-text);
+  --color-critical-bg: var(--critical-bg);
+  --color-critical-text: var(--critical-text);
+}
+
+body {
+  background-color: var(--bg-canvas);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Custom Inset Shadows & Paper Shadow */
+.inset-shadow-subtle {
+  box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.05);
+}
+
+.paper-shadow {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03), 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+.theme-transition {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Custom Thin Scrollbars */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 3px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
