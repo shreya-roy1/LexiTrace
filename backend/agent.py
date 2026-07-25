@@ -237,7 +237,39 @@ def run_rag_agent(query: str) -> dict:
     return result
 
 if __name__ == "__main__":
+    import sys
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
+
     # Test agent workflow
     print("Running test agent call:")
+    
+    # Ingest test documents so search retrieves them in the test run
+    from backend.vector_store import upsert_documents
+    test_docs = [
+        {
+            "id": "test-1",
+            "text": "The quarterly profits of LexiTrace rose by 15% due to automation.",
+            "source_pdf": "q3_report.pdf",
+            "page_number": 3,
+            "confidence_score": 0.95
+        },
+        {
+            "id": "test-2",
+            "text": "LexiTrace reported an increase in client acquisition by 45% in Q4.",
+            "source_pdf": "q4_report.pdf",
+            "page_number": 1,
+            "confidence_score": 0.82
+        }
+    ]
+    print("Ingesting test documents to vector store...")
+    upsert_documents(test_docs)
+    
     res = run_rag_agent("What are the quarterly profits of LexiTrace?")
-    print("Response:", res["verified_response"])
+    try:
+        print("Response:", res["verified_response"])
+    except UnicodeEncodeError:
+        verified_text = res["verified_response"]
+        print("Response:", verified_text.encode('utf-8', errors='replace').decode('cp1252', errors='replace'))
