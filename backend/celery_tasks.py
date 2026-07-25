@@ -6,6 +6,16 @@ from backend.vector_store import upsert_documents
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
+# Check if Redis is online
+redis_online = False
+try:
+    r = redis.Redis.from_url(REDIS_URL, socket_timeout=1.0)
+    r.ping()
+    redis_online = True
+    print("Celery tasks: Connected to Redis successfully.")
+except Exception as e:
+    print(f"Celery tasks: Redis offline ({e}). Running tasks eagerly in sync mode.")
+
 celery_app = Celery(
     "lexitrace_tasks",
     broker=REDIS_URL,
@@ -13,7 +23,7 @@ celery_app = Celery(
 )
 
 celery_app.conf.update(
-    task_always_eager=False,
+    task_always_eager=not redis_online,
     task_ignore_result=True
 )
 
@@ -61,7 +71,7 @@ def process_document_task(file_path: str, doc_id: str, source_pdf: str, page_num
 
     # Broadcast WebSocket update event over Redis PubSub
     try:
-        r = redis.Redis.from_url(REDIS_URL)
+        r = redis.Redis.from_url(REDIS_URL, socket_timeout=1.0)
         # Read queue status count
         queue_file = os.path.join(os.path.dirname(__file__), "low_confidence_queue.json")
         count = 0
