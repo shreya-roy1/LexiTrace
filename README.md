@@ -1,4 +1,4 @@
-# LexiTrace
+﻿# LexiTrace
 
 LexiTrace is a real-time citation tracing and confidence verification engine designed for AI agent validation. It acts as an automated fact-checker and citation verifier that processes agent outputs, checks them against a vector knowledge store, and flags low-confidence responses for human review.
 
