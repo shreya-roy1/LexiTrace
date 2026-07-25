@@ -209,6 +209,12 @@ def verify_citations(llm_response: str, context_docs: list[dict]) -> str:
     return " ".join(verified_sentences)
 
 if __name__ == "__main__":
+    import sys
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
+
     # Test verifier
     docs = [
         {"text": "LexiTrace was founded in 2024 by expert AI researchers and specializes in document verification systems."},
@@ -219,4 +225,9 @@ if __name__ == "__main__":
     
     print("Testing verification:")
     print("Original:", test_response)
-    print("Verified:", verify_citations(test_response, docs))
+    try:
+        print("Verified:", verify_citations(test_response, docs))
+    except UnicodeEncodeError:
+        # Fallback for systems that fail even after reconfiguration
+        verified_text = verify_citations(test_response, docs)
+        print("Verified:", verified_text.encode('utf-8', errors='replace').decode('cp1252', errors='replace'))
