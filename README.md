@@ -1,4 +1,5 @@
 # LexiTrace: Enterprise Citation Tracing & RAG Validation Engine
+<br>
 
 [![Next.js](https://img.shields.io/badge/Next.js-15.0-black?style=flat-square&logo=next.js)](https://nextjs.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110-emerald?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com/)
@@ -122,3 +123,5 @@ To test document ingestion and citation tracing:
     python backend/test_ingest.py
     ```
 3.  This script simulates parsing a PDF containing tables and text, and registers them. If offline, the fallback modes will index these into the local in-memory Qdrant store.
+
+---
