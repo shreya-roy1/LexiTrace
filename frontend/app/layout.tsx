@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   title: "LexiTrace - Enterprise Document Verification & RAG Engine",
   description: "Enterprise RAG platform with verified citations and Human-in-the-Loop review queue.",
   icons: {
-    icon: "/favicon.ico",
+    icon: "/favicon.png",
   }
 };
 
