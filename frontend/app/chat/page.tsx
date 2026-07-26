@@ -17,9 +17,6 @@ import {
   Moon,
   Activity,
   Sparkles,
-  Sun,
-  Moon,
-  Activity,
   RefreshCw,
   Search,
   Zap,
@@ -432,6 +429,47 @@ export default function ChatPage() {
     );
   };
 
+  const getFollowUps = () => {
+    if (messages.length <= 1) return [];
+    const lastUserMsg = [...messages].reverse().find(m => m.role === "user");
+    if (!lastUserMsg) return [];
+    
+    const query = lastUserMsg.text.toLowerCase();
+    if (query.includes("financial") || query.includes("q3") || query.includes("revenue")) {
+      return [
+        "Check Q3 net income details",
+        "Which document holds financial data?",
+        "Compare with development costs"
+      ];
+    }
+    if (query.includes("development") || query.includes("costs") || query.includes("salaries") || query.includes("infrastructure")) {
+      return [
+        "What are the infrastructure costs?",
+        "Show licensing cost details",
+        "Verify product development costs"
+      ];
+    }
+    if (query.includes("pending") || query.includes("review") || query.includes("hitl") || query.includes("queue")) {
+      return [
+        "How to edit a document?",
+        "What happens upon approving?",
+        "What is the confidence threshold?"
+      ];
+    }
+    if (query.includes("citation") || query.includes("nli") || query.includes("verification") || query.includes("hallucination")) {
+      return [
+        "What is DeBERTa v3?",
+        "What does the warning badge mean?",
+        "Show verifier.py details"
+      ];
+    }
+    return [
+      "Can you elaborate on this?",
+      "Show citation source document",
+      "List relevant PDF files"
+    ];
+  };
+
   return (
     <div className="flex h-screen bg-bg-canvas text-text-primary overflow-hidden font-sans">
       
@@ -546,26 +584,107 @@ export default function ChatPage() {
         </header>
 
         {/* Chat message space */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-            >
-              <div
-                className={`max-w-[75%] rounded-2xl px-5 py-3.5 shadow-sm border ${
-                  msg.role === "user"
-                    ? "bg-interactive-accent border-border-subtle/10 text-bg-surface rounded-br-none shadow-md"
-                    : "bg-bubble-ai-bg border-border-subtle rounded-bl-none text-text-primary"
-                }`}
-              >
-                {renderMessageContent(msg)}
-                <div className="mt-1.5 text-[9px] opacity-45 text-right font-mono">
-                  {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        <div className="flex-1 overflow-y-auto p-6 space-y-6 flex flex-col justify-between">
+          {messages.length <= 1 ? (
+            <div className="max-w-2xl mx-auto my-auto py-12 px-4 flex flex-col items-center justify-center text-center space-y-8 animate-[fadeIn_0.5s_ease-out]">
+              {/* Brand Logo and Title */}
+              <div className="space-y-3">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-[#3B82F6] to-[#10B981] dark:from-[#6366F1] dark:to-[#34D399] flex items-center justify-center mx-auto shadow-md transform hover:rotate-12 transition-transform duration-300">
+                  <Sparkles className="w-8 h-8 text-white animate-pulse" />
+                </div>
+                <div>
+                  <h2 className="text-3xl font-extrabold tracking-tight text-text-primary">
+                    LexiTrace RAG Workspace
+                  </h2>
+                  <p className="text-sm text-text-secondary max-w-md mx-auto mt-1 leading-relaxed">
+                    Ask natural questions about your enterprise documents. Every answer is cross-referenced using sentence-level NLI entailment.
+                  </p>
+                </div>
+              </div>
+
+              {/* Grid of Recommended Inquiries */}
+              <div className="w-full space-y-3 text-left">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-text-secondary px-1">
+                  Suggested Prompts
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Card 1 */}
+                  <button
+                    onClick={() => handleSend("What are the Q3 financial metrics?")}
+                    className="p-4 rounded-xl border border-border-subtle bg-bg-sidebar hover:bg-bg-surface hover:border-interactive-accent hover:shadow-md transition-all text-left flex flex-col gap-1.5 cursor-pointer group"
+                  >
+                    <span className="font-semibold text-text-primary text-sm flex items-center gap-1.5 group-hover:text-interactive-accent">
+                      📊 What are the Q3 financial metrics?
+                    </span>
+                    <span className="text-xs text-text-secondary leading-relaxed">
+                      Analyze revenue growth, net income, and operating margins in the Q3 report.
+                    </span>
+                  </button>
+
+                  {/* Card 2 */}
+                  <button
+                    onClick={() => handleSend("Tell me about the product development costs")}
+                    className="p-4 rounded-xl border border-border-subtle bg-bg-sidebar hover:bg-bg-surface hover:border-interactive-accent hover:shadow-md transition-all text-left flex flex-col gap-1.5 cursor-pointer group"
+                  >
+                    <span className="font-semibold text-text-primary text-sm flex items-center gap-1.5 group-hover:text-interactive-accent">
+                      💵 Product development costs
+                    </span>
+                    <span className="text-xs text-text-secondary leading-relaxed">
+                      Retrieve cost details for salaries, infrastructure, and licensing.
+                    </span>
+                  </button>
+
+                  {/* Card 3 */}
+                  <button
+                    onClick={() => handleSend("Show me the documents in the HITL queue")}
+                    className="p-4 rounded-xl border border-border-subtle bg-bg-sidebar hover:bg-bg-surface hover:border-interactive-accent hover:shadow-md transition-all text-left flex flex-col gap-1.5 cursor-pointer group"
+                  >
+                    <span className="font-semibold text-text-primary text-sm flex items-center gap-1.5 group-hover:text-interactive-accent">
+                      🛡️ Show pending review queue
+                    </span>
+                    <span className="text-xs text-text-secondary leading-relaxed">
+                      List all OCR segments with low confidence scores flagged for manual inspection.
+                    </span>
+                  </button>
+
+                  {/* Card 4 */}
+                  <button
+                    onClick={() => handleSend("Explain citation verification")}
+                    className="p-4 rounded-xl border border-border-subtle bg-bg-sidebar hover:bg-bg-surface hover:border-interactive-accent hover:shadow-md transition-all text-left flex flex-col gap-1.5 cursor-pointer group"
+                  >
+                    <span className="font-semibold text-text-primary text-sm flex items-center gap-1.5 group-hover:text-interactive-accent">
+                      🔍 Explain citation verification
+                    </span>
+                    <span className="text-xs text-text-secondary leading-relaxed">
+                      How does the DeBERTa model find fact hallucinations and show warning markers?
+                    </span>
+                  </button>
                 </div>
               </div>
             </div>
-          ))}
+          ) : (
+            <div className="space-y-6">
+              {messages.map((msg) => (
+                <div
+                  key={msg.id}
+                  className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                >
+                  <div
+                    className={`max-w-[75%] rounded-2xl px-5 py-3.5 shadow-sm border ${
+                      msg.role === "user"
+                        ? "bg-interactive-accent border-border-subtle/10 text-bg-surface rounded-br-none shadow-md"
+                        : "bg-bubble-ai-bg border-border-subtle rounded-bl-none text-text-primary"
+                    }`}
+                  >
+                    {renderMessageContent(msg)}
+                    <div className="mt-1.5 text-[9px] opacity-45 text-right font-mono">
+                      {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Active Agent status progress pill */}
           {agentStatus && (
@@ -612,21 +731,20 @@ export default function ChatPage() {
             </div>
           )}
 
-          {/* Quick templates */}
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => handleSend("What are the Q3 financial metrics?")}
-              className="text-xs px-3 py-1.5 rounded-full bg-secondary-accent-bg border border-interactive-accent/10 text-secondary-accent-text hover:bg-interactive-accent/5 transition-all cursor-pointer font-semibold shadow-xs"
-            >
-              What are the Q3 financial metrics?
-            </button>
-            <button
-              onClick={() => handleSend("Tell me about the product development costs")}
-              className="text-xs px-3 py-1.5 rounded-full bg-secondary-accent-bg border border-interactive-accent/10 text-secondary-accent-text hover:bg-interactive-accent/5 transition-all cursor-pointer font-semibold shadow-xs"
-            >
-              Tell me about product development costs
-            </button>
-          </div>
+          {/* Dynamic Follow-up Recommendations */}
+          {!loading && messages.length > 1 && (
+            <div className="flex flex-wrap gap-2 animate-[fadeIn_0.3s_ease-out]">
+              {getFollowUps().map((prompt, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => handleSend(prompt)}
+                  className="text-[11px] px-3 py-1.5 rounded-full bg-bg-canvas border border-border-subtle text-text-secondary hover:bg-interactive-accent hover:text-bg-surface hover:border-transparent transition-all cursor-pointer font-semibold shadow-xs"
+                >
+                  {prompt}
+                </button>
+              ))}
+            </div>
+          )}
 
           <form
             onSubmit={(e) => {
