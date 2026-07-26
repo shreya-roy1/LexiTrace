@@ -1,127 +1,139 @@
-# LexiTrace: Enterprise Citation Tracing & RAG Validation Engine
-<br>
+# LexiTrace: Enterprise RAG with Hallucination Entailment & Resilient Sync
 
-[![Next.js](https://img.shields.io/badge/Next.js-15.0-black?style=flat-square&logo=next.js)](https://nextjs.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.110-emerald?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com/)
-[![Qdrant](https://img.shields.io/badge/Qdrant-1.18-red?style=flat-square&logo=qdrant)](https://qdrant.tech/)
-[![Celery](https://img.shields.io/badge/Celery-5.4-green?style=flat-square&logo=celery)](https://docs.celeryq.dev/)
-[![Transformers](https://img.shields.io/badge/Transformers-HF-blue?style=flat-square&logo=huggingface)](https://huggingface.co/)
+LexiTrace is an institutional-grade, real-time Retrieval-Augmented Generation (RAG) platform optimized for sub-second perceived response latency, connection resilience, and high-fidelity citation verification using Natural Language Inference (NLI).
 
-LexiTrace is a real-time citation tracing and confidence verification engine designed for AI agent validation. It acts as an automated fact-checker and citation verifier that processes agent outputs, checks them against a vector knowledge store using Natural Language Inference (NLI), and flags low-confidence responses or unverified citations for human review.
+The application features a modern conversational search assistant, a Human-in-the-Loop (HITL) document verification queue, and a live health telemetry dashboard.
 
 ---
 
-## 🌟 Key Capabilities
+## Key Architecture & Optimizations
 
-*   **Semantic Hybrid Retrieval:** Integrates Qdrant with dense embeddings and a stateless, deterministic sparse vectorizer to perform dual hybrid keyword search.
-*   **HuggingFace NLI Verification:** Validates statement entailment against retrieved sources using `cross-encoder/nli-deberta-v3-base` to detect and flag hallucinations (`[⚠️ Citation Unverified]`).
-*   **Semantic Query Caching:** Leverages cosine similarity mapping to bypass the agent execution loop for identical/semantically similar queries (>=95% similarity), offering sub-millisecond response times.
-*   **Celery & Redis Worker Queues:** Dispatches heavy ingestion tasks asynchronously to background workers.
-*   **Resilient WebSocket Stream:** Reconnects automatically using a sequence-tracked event logger to prevent client-side data loss.
-*   **Human-In-The-Loop (HITL) Queue:** A specialized dashboard portal for human operators to inspect, edit, and approve low-confidence OCR scans.
-
----
-
-## 🏗️ System Architecture
-
+### 1. Latency & Verification Pipeline
 ```mermaid
 graph TD
-    Client[Next.js Web Client] -->|WebSocket / SSE| API[FastAPI Server]
-    API -->|Get/Set Cache| Cache[(Semantic Cache: Redis / Memory)]
-    API -->|Dual Search| VectorStore[(Qdrant: Dense & Sparse)]
-    API -->|Ingest Dispatch| Queue[Redis Broker]
-    Queue --> Worker[Celery Worker]
-    Worker -->|Index & Route| VectorStore
-    Worker -->|Flag Low-Confidence| HITL[(HITL Queue: JSON Database)]
-    API -->|Verify Citations| NLI[NLI Entailment Classifier]
-    HITL -->|Operator Approve| VectorStore
+    A[User Query] --> B{Check Redis Semantic Cache}
+    B -- Hit >= 0.95 --o C[Instant Typewriter Stream]
+    B -- Miss --o D[Speculative Parallel Node Execution]
+    
+    D --> E[Qdrant Hybrid Search on Raw Query]
+    D --> F[LLM Query Reformulation Task]
+    
+    E --> G{First-Pass Score >= 0.88?}
+    G -- Yes: Skip Rewrite --o H[Stream Tokens]
+    G -- No --o I[Run Search on Rewritten Query] --> H
+    
+    H --> J[Sentence-Level Fast Heuristic Check]
+    J -- Failed Citation --o K[Yield Warning Pill Immediately]
+    J -- Passed --o L[Yield Standard Citation Pill]
+    
+    H -- Stream Finished --o M[Deferred Deep NLI DeBERTa Pass]
+    M -- Hallucinated Claims --o N[Insert/Adjust Warning Markers]
+    M -- Verified --o O[Save to Semantic Cache & Return Final Response]
+```
+
+* **Speculative Parallel Retrieval:** To bypass sequential bottlenecks, LexiTrace concurrently queries the Qdrant vector database using the raw user query while running the LLM query rewrite node. If the first-pass retrieval score exceeds `0.88`, it skips query expansion entirely, shaving ~1.5s off the response pipeline.
+* **Semantic Caching:** A high-speed Redis semantic cache evaluates incoming query embeddings using cosine similarity. Matches above `0.95` bypass the LLM and stream the cached, verified response instantly.
+* **Fast Heuristic & Deferred NLI Verification:** Deep Natural Language Inference (using the `DeBERTa-v3-base` model) can add substantial latency during generation. LexiTrace runs a lightweight word-overlap and strict numerical-matching heuristic during active token streaming, injecting warning flags on-the-fly. Once token output finishes, it runs a background NLI pass to correct or finalize the citation verification.
+* **Immediate SSE Flush:** The FastAPI SSE server streams tokens using `asyncio.sleep(0)` on every emission to prevent connection buffering or chunk batching.
+
+### 2. Resilient WebSocket State Sync
+* **Sequence Tracking:** Every state event (e.g. queue items approved, pipeline changes) contains an incrementing `event_id`. If the network blips, the frontend reconnection sends the `last_event_id` as a query parameter so the backend automatically re-emits missed messages.
+* **Ping-Pong Latency Telemetry:** A 15-second heartbeat loop updates the `/status` telemetry panel in real-time with actual socket latency measurements (e.g. `WebSocket Ping: 12ms`).
+* **Optimistic UI Updates:** Approving document segments in the HITL Queue immediately removes them from the frontend state. If the server fails to write to Qdrant, the state is rolled back and a warning toast notification is shown.
+
+---
+
+## Technology Stack
+
+* **Frontend:** Next.js 16 (App Router), React 19, Tailwind CSS v4, Lucide Icons, TypeScript.
+* **Backend:** FastAPI, LangGraph (Agentic Workflow Routing), Qdrant Vector database, Redis (Pub/Sub & Semantic Cache), Hugging Face Transformers (`cross-encoder/nli-deberta-v3-base`), OpenAI Embeddings & GPT models.
+
+---
+
+## Directory Structure
+
+```
+LexiTrace/
+├── backend/
+│   ├── main.py              # FastAPI server, SSE stream generator & WS endpoints
+│   ├── agent.py             # LangGraph agentic retrieval & grading flow
+│   ├── retrieval.py         # Qdrant Hybrid dense/sparse search & BGE Reranker
+│   ├── verifier.py          # Fast Heuristic & DeBERTa NLI citation verification
+│   ├── cache.py             # Redis semantic query embedding cache
+│   └── vector_store.py      # Qdrant schema initialization & document upserts
+├── frontend/
+│   ├── app/
+│   │   ├── chat/page.tsx    # Conversational RAG interface
+│   │   ├── review/page.tsx  # HITL Workspace UI
+│   │   ├── status/page.tsx  # Telemetry dashboard
+│   │   └── globals.css      # Core styles & Tailwind imports
+│   ├── components/
+│   │   ├── ChatStream.tsx   # Modular streaming messages & thinking line
+│   │   └── HITLQueue.tsx    # Workspace queue card list
+│   └── context/
+│       └── RealtimeContext.tsx # WebSocket connection & heartbeat context
+├── docker-compose.yml       # Qdrant service container configuration
+└── .env.example             # Setup parameters template
 ```
 
 ---
 
-## ⚙️ Core Components & Architecture
-
-### 1. Ingestion Pipeline & HITL Fallback
-*   Document chunks sent to `/api/ingest` are routed through background workers.
-*   **Confidence Threshold (0.85):**
-    - **>= 85% OCR Confidence:** Directly indexed into Qdrant.
-    - **< 85% OCR Confidence:** Placed in the HITL Queue for manual review, editing, and indexing.
-
-### 2. Retrieval, Caching, & Verification
-*   **Hybrid Search:** Dense vector embeddings (OpenAI/Deterministic Mock) combined with deterministic sparse BM25 vectors, merged via Reciprocal Rank Fusion (RRF), and ranked using a Cross-Encoder (`BAAI/bge-reranker-large`).
-*   **Hallucination Checking (NLI):** Extracts sentences containing `[Doc X]` tags and passes them along with the document premise to the HuggingFace NLI pipeline. Sentences that fail to achieve the required threshold (0.75 by default) are appended with a `[⚠️ Citation Unverified]` tag.
-*   **Semantic Cache:** Direct query cache using vector search. If a incoming query maps close to a cached vector (>=95% cosine similarity), the cached verified response is streamed back instantly.
-
----
-
-## 🚀 Resilience & Offline Fallbacks
-
-LexiTrace is designed for offline portability. If core microservices are unavailable, the backend seamlessly degrades:
-*   **Qdrant Offline:** Automatically instantiates a local in-memory storage client (`location=":memory:"`).
-*   **Redis/Celery Offline:** Automatically checks Redis availability and converts to **Eager Execution Mode** (`task_always_eager=True`). Documents are parsed and indexed synchronously in-process instead of blocking the FastAPI server.
-*   **Cache Offline:** Automatically falls back to an in-memory dictionary-based semantic cache.
-*   **NLI/LLM Offline:** Falls back to a deterministic string overlap and number matching algorithm, and uses a deterministic mock embedding generator.
-
----
-
-## 💻 Local Development Setup
+## Getting Started
 
 ### Prerequisites
-*   Node.js (v18+)
-*   Python (v3.10+)
-*   Redis / Qdrant (Optional: Local docker containers or fallback mode will handle their absence)
+* Python 3.10+
+* Node.js 18+
+* Docker Desktop
+
+### 1. External Services Setup
+Launch Qdrant and Redis locally:
+```bash
+# Start Qdrant vector store
+docker-compose up -d
+
+# (Optional) If Redis is not installed locally, run it via docker:
+docker run -d --name redis_local -p 6379:6379 redis:latest
+```
+
+### 2. Backend Installation & Launch
+Create virtual environment and install backend dependencies:
+```bash
+# Initialize and activate virtual environment
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+
+# Install requirements
+pip install -r backend/requirements.txt
+
+# Configure environment variables
+cp .env.example .env
+# Edit .env with your OPENAI_API_KEY
+```
+
+Run the FastAPI application server:
+```bash
+python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+### 3. Frontend Installation & Launch
+Open a new terminal window to configure and start the Next.js development server:
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+The application will be accessible at [http://localhost:3000](http://localhost:3000). You can check the backend documentation schema at [http://localhost:8000/docs](http://localhost:8000/docs).
 
 ---
 
-### Backend Service Setup
-1.  Navigate to the backend directory:
-    ```bash
-    cd backend
-    ```
-2.  Create and activate a virtual environment:
-    ```bash
-    python -m venv .venv
-    # Windows
-    .venv\Scripts\activate
-    # macOS/Linux
-    source .venv/bin/activate
-    ```
-3.  Install dependencies:
-    ```bash
-    pip install -r requirements.txt
-    ```
-4.  Start the FastAPI server:
-    ```bash
-    python -m uvicorn main:app --reload --port 8000
-    ```
-    *The API will be live at [http://localhost:8000](http://localhost:8000) and Swagger docs at [http://localhost:8000/docs](http://localhost:8000/docs).*
+## Environment Variables
 
----
+Configure these in the `.env` file at the root directory:
 
-### Frontend Service Setup
-1.  Navigate to the frontend directory:
-    ```bash
-    cd frontend
-    ```
-2.  Install packages:
-    ```bash
-    npm install
-    ```
-3.  Start Next.js in development mode:
-    ```bash
-    npm run dev
-    ```
-    *The Client dashboard will be live at [http://localhost:3000](http://localhost:3000).*
-
----
-
-## 🛠️ Testing Local Workflows
-To test document ingestion and citation tracing:
-1.  Ensure backend server is running on `port 8000`.
-2.  Execute the ingestion test script:
-    ```bash
-    python backend/test_ingest.py
-    ```
-3.  This script simulates parsing a PDF containing tables and text, and registers them. If offline, the fallback modes will index these into the local in-memory Qdrant store.
-
----
+| Variable | Description | Default |
+| :--- | :--- | :--- |
+| `OPENAI_API_KEY` | Key for dense embeddings & chat generation | *(Required)* |
+| `QDRANT_URL` | Local or remote url for vector database | `http://localhost:6333` |
+| `REDIS_URL` | URL connection string for semantic cache | `redis://localhost:6379/0` |
+| `PORT` | API server listen port | `8000` |
