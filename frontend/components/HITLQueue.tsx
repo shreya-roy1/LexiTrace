@@ -39,8 +39,8 @@ export const HITLQueue: React.FC<HITLQueueProps> = ({
             onClick={() => onSelectItem(item)}
             className={`w-full text-left p-3.5 rounded-xl border transition-all duration-300 flex flex-col gap-2 cursor-pointer shadow-xs hover:border-interactive-accent/50 ${
               isActive
-                ? "bg-[#334155]/20 border-interactive-accent/70 shadow-md"
-                : "bg-bg-sidebar border-border-subtle hover:bg-bg-canvas"
+                ? "bg-bg-surface border-interactive-accent/70 shadow-md ring-2 ring-interactive-accent/20"
+                : "bg-bg-sidebar/40 border-border-subtle hover:bg-bg-surface"
             }`}
           >
             <div className="flex items-center justify-between w-full">
