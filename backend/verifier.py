@@ -121,7 +121,7 @@ def heuristic_entailment_check(premise: str, hypothesis: str) -> bool:
     # If 70% of non-stopwords in the hypothesis are present in the premise, we assume entailment
     return overlap_ratio >= 0.70
 
-def verify_citations(llm_response: str, context_docs: list[dict]) -> str:
+def verify_citations(llm_response: str, context_docs: list[dict], nli_required: bool = True) -> str:
     """
     Parses LLM response, extracts sentences with citations like [Doc X],
     verifies them against the corresponding source chunk in context_docs.
@@ -134,7 +134,7 @@ def verify_citations(llm_response: str, context_docs: list[dict]) -> str:
     sentences = re.split(r'(?<=[.!?])\s+', llm_response)
     verified_sentences = []
     
-    nli = get_nli_pipeline()
+    nli = get_nli_pipeline() if nli_required else None
     
     for sentence in sentences:
         # Find all citations in this sentence like [Doc 1], [Doc 2], etc.
