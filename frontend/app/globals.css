@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --bg-canvas: #F7F8FA;
   --bg-surface: #FFFFFF;
@@ -26,6 +28,7 @@
   :root:not(.light) {
     --bg-canvas: #020617;
     --bg-sidebar: #0F172A;
+    --bg-surface: #1E293B;
     --border-subtle: #1E293B;
     
     --text-primary: #F1F5F9;
@@ -44,6 +47,7 @@
 .dark {
   --bg-canvas: #020617;
   --bg-sidebar: #0F172A;
+  --bg-surface: #1E293B;
   --border-subtle: #1E293B;
   
   --text-primary: #F1F5F9;
