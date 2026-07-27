@@ -17,8 +17,11 @@ import {
   LayoutDashboard,
   Sun,
   Moon,
-  Activity
+  Activity,
+  Settings
 } from "lucide-react";
+import { SettingsModal } from "../../components/SettingsModal";
+import dynamic from "next/dynamic";
 
 interface IngestDocument {
   id: string;
@@ -28,7 +31,7 @@ interface IngestDocument {
   confidence_score: number;
 }
 
-export default function ReviewPage() {
+function ReviewPageContent() {
   const { isConnected, queuePendingCount } = useRealtime();
 
   const [queue, setQueue] = useState<IngestDocument[]>([]);
@@ -43,6 +46,8 @@ export default function ReviewPage() {
   
   // Theme state
   const [theme, setTheme] = useState<"light" | "dark">("dark");
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   const fetchQueue = async () => {
     setLoading(true);
@@ -88,6 +93,7 @@ export default function ReviewPage() {
   };
 
   useEffect(() => {
+    setMounted(true);
     fetchQueue();
     // Theme sync
     const storedTheme = localStorage.getItem("theme");
@@ -240,36 +246,49 @@ export default function ReviewPage() {
         </div>
 
         {/* Sidebar Footer with Theme Toggle */}
-        <div className="p-4 border-t border-border-subtle space-y-4">
-          
-          <div className="bg-bg-surface p-3 rounded-xl border border-border-subtle shadow-inner">
-            <h4 className="text-[10px] text-text-secondary font-bold uppercase tracking-wide">Queue Status</h4>
-            <div className="flex items-baseline gap-2 mt-1.5">
-              <span className="text-2xl font-extrabold text-text-primary">{queue.length}</span>
-              <span className="text-[10px] text-text-secondary">items pending</span>
+        {mounted && (
+          <div className="p-4 border-t border-border-subtle space-y-4">
+            
+            <div className="bg-bg-surface p-3 rounded-xl border border-border-subtle shadow-inner">
+              <h4 className="text-[10px] text-text-secondary font-bold uppercase tracking-wide">Queue Status</h4>
+              <div className="flex items-baseline gap-2 mt-1.5">
+                <span className="text-2xl font-extrabold text-text-primary">{queue.length}</span>
+                <span className="text-[10px] text-text-secondary">items pending</span>
+              </div>
+
             </div>
 
+            <button 
+              onClick={toggleTheme}
+              className="w-full flex items-center justify-between px-4 py-2.5 rounded-lg border border-border-subtle bg-bg-surface hover:bg-bg-sidebar text-xs text-text-primary font-bold transition-all cursor-pointer shadow-sm"
+            >
+              <span className="flex items-center gap-2">
+                {theme === "dark" ? <Sun className="w-4 h-4 text-warning-text" /> : <Moon className="w-4 h-4 text-interactive-accent" />}
+                <span>{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
+              </span>
+              <span className="text-[10px] text-text-secondary font-mono">{theme.toUpperCase()}</span>
+            </button>
+
+            <button 
+              onClick={() => setSettingsOpen(true)}
+              className="w-full flex items-center justify-between px-4 py-2.5 rounded-lg border border-border-subtle bg-bg-surface hover:bg-bg-sidebar text-xs text-text-primary font-bold transition-all cursor-pointer shadow-sm"
+            >
+              <span className="flex items-center gap-2">
+                <Settings className="w-4 h-4 text-interactive-accent" />
+                <span>Settings</span>
+              </span>
+              <span className="text-[10px] text-text-secondary font-mono">CFG</span>
+            </button>
+
+            <button 
+              onClick={fetchQueue}
+              className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-bg-surface hover:bg-bg-sidebar border border-border-subtle text-xs text-text-primary font-semibold cursor-pointer transition-all shadow-sm"
+            >
+              <RefreshCw className="w-3.5 h-3.5 text-text-secondary" />
+              Refresh Queue
+            </button>
           </div>
-
-          <button 
-            onClick={toggleTheme}
-            className="w-full flex items-center justify-between px-4 py-2.5 rounded-lg border border-border-subtle bg-bg-surface hover:bg-bg-sidebar text-xs text-text-primary font-bold transition-all cursor-pointer shadow-sm"
-          >
-            <span className="flex items-center gap-2">
-              {theme === "dark" ? <Sun className="w-4 h-4 text-warning-text" /> : <Moon className="w-4 h-4 text-interactive-accent" />}
-              <span>{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
-            </span>
-            <span className="text-[10px] text-text-secondary font-mono">{theme.toUpperCase()}</span>
-          </button>
-
-          <button 
-            onClick={fetchQueue}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-bg-surface hover:bg-bg-sidebar border border-border-subtle text-xs text-text-primary font-semibold cursor-pointer transition-all shadow-sm"
-          >
-            <RefreshCw className="w-3.5 h-3.5 text-text-secondary" />
-            Refresh Queue
-          </button>
-        </div>
+        )}
       </aside>
 
       {/* Main Review Workplace */}
@@ -330,45 +349,44 @@ export default function ReviewPage() {
               </div>
               
               {/* PDF Representation Sheet */}
-              <div className="flex-1 bg-slate-50 border border-slate-200 text-slate-850 p-8 shadow-xl rounded-xl relative select-none font-sans min-h-[400px] flex flex-col justify-between paper-shadow">
-                <div className="absolute top-3 right-4 text-[9px] text-slate-400 font-mono">
+              <div className="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 p-8 shadow-xl rounded-xl relative select-none font-sans min-h-[400px] flex flex-col justify-between paper-shadow">
+                <div className="absolute top-3 right-4 text-[9px] text-slate-400 dark:text-slate-500 font-mono">
                   SCAN FILE: {activeItem.source_pdf} (PAGE {activeItem.page_number})
                 </div>
                 
                 {/* Header Mock */}
-                <div className="border-b border-slate-200 pb-4 mb-6">
-                  <div className="h-6 w-32 bg-slate-200 rounded mb-2"></div>
-                  <div className="h-4 w-48 bg-slate-150 rounded"></div>
+                <div className="border-b border-slate-200 dark:border-slate-800 pb-4 mb-6">
+                  <div className="h-6 w-32 bg-slate-200 dark:bg-slate-850 rounded mb-2"></div>
+                  <div className="h-4 w-48 bg-slate-200/60 dark:bg-slate-850/60 rounded"></div>
                 </div>
                 
                 {/* Document Body Mock */}
                 <div className="flex-1 space-y-6">
                   <div className="space-y-2">
-                    <div className="h-4 w-full bg-slate-150 rounded"></div>
-                    <div className="h-4 w-11/12 bg-slate-150 rounded"></div>
+                    <div className="h-4 w-full bg-slate-200/60 dark:bg-slate-850/60 rounded"></div>
+                    <div className="h-4 w-11/12 bg-slate-200/60 dark:bg-slate-850/60 rounded"></div>
                   </div>
 
                   {/* Highlighted Zone mimicking OCR uncertainty - clean translucent warm tint overlay */}
                   <div 
-                    style={{ backgroundColor: "rgba(245, 158, 11, 0.12)" }}
-                    className="p-5 border-l-4 border-warning-text rounded-r-lg relative overflow-hidden transition-all shadow-xs"
+                    className="p-5 border-l-4 border-amber-600 dark:border-amber-400 bg-amber-500/10 dark:bg-amber-500/15 rounded-r-lg relative overflow-hidden transition-all shadow-xs"
                   >
-                    <div className="absolute top-1.5 right-2 text-[8px] text-warning-text/75 font-mono uppercase font-bold tracking-wider">
+                    <div className="absolute top-1.5 right-2 text-[8px] text-amber-700 dark:text-amber-300 font-mono uppercase font-bold tracking-wider">
                       Low Confidence Data Block
                     </div>
-                    <div className="font-mono text-xs whitespace-pre-wrap leading-relaxed pt-2 text-[#78350F] dark:text-[#F8FAFC] font-semibold">
+                    <div className="font-mono text-xs whitespace-pre-wrap leading-relaxed pt-2 text-amber-900 dark:text-amber-100 font-semibold">
                       {activeItem.text}
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <div className="h-4 w-5/6 bg-slate-150 rounded"></div>
-                    <div className="h-4 w-full bg-slate-150 rounded"></div>
+                    <div className="h-4 w-5/6 bg-slate-200/60 dark:bg-slate-850/60 rounded"></div>
+                    <div className="h-4 w-full bg-slate-200/60 dark:bg-slate-850/60 rounded"></div>
                   </div>
                 </div>
                 
                 {/* Footer Mock */}
-                <div className="border-t border-slate-200 pt-4 mt-6 text-center text-[9px] text-slate-350 font-mono tracking-widest uppercase">
+                <div className="border-t border-slate-200 dark:border-slate-800 pt-4 mt-6 text-center text-[9px] text-slate-400 dark:text-slate-500 font-mono tracking-widest uppercase">
                   Confidential - Internal LexiTrace OCR scan sheet
                 </div>
               </div>
@@ -485,6 +503,14 @@ export default function ReviewPage() {
 
       </main>
 
+      <SettingsModal 
+        isOpen={settingsOpen} 
+        onClose={() => setSettingsOpen(false)} 
+        theme={theme} 
+        toggleTheme={toggleTheme} 
+      />
     </div>
   );
 }
+
+export default dynamic(() => Promise.resolve(ReviewPageContent), { ssr: false });
