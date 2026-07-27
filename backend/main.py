@@ -25,6 +25,7 @@ QUEUE_FILE = os.path.join(os.path.dirname(__file__), "low_confidence_queue.json"
 
 class ChatRequest(BaseModel):
     query: str
+    nli_required: Optional[bool] = True
 
 class ChatResponse(BaseModel):
     response: str
@@ -176,7 +177,7 @@ def read_root():
     return {"status": "ok", "message": "LexiTrace Backend API is running."}
 
 # Chat stream generator for Server-Sent Events (SSE)
-async def chat_stream_generator(query: str):
+async def chat_stream_generator(query: str, nli_required: bool = True):
     # Check Semantic Query Cache First
     is_hit, cached_resp, cached_verified, cached_docs = semantic_cache.get(query)
     if is_hit:
@@ -284,7 +285,7 @@ async def chat_stream_generator(query: str):
     
     from backend.verifier import verify_citations
     try:
-        verified_text = verify_citations(response_text, serialized_docs)
+        verified_text = await asyncio.to_thread(verify_citations, response_text, serialized_docs, nli_required)
     except Exception as e:
         print(f"Verification failed: {e}")
         verified_text = response_text
@@ -314,7 +315,7 @@ async def chat_stream_generator(query: str):
 def chat_endpoint(request: ChatRequest):
     if not request.query.strip():
         raise HTTPException(status_code=400, detail="Query cannot be empty")
-    return StreamingResponse(chat_stream_generator(request.query), media_type="text/event-stream")
+    return StreamingResponse(chat_stream_generator(request.query, request.nli_required), media_type="text/event-stream")
 
 @app.get("/api/review", response_model=List[IngestDocument])
 def get_review_queue():
