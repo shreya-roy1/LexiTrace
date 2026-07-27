@@ -17,20 +17,26 @@ import {
   Cpu,
   Layers,
   ArrowRight,
-  ExternalLink
+  ExternalLink,
+  Settings
 } from "lucide-react";
+import { SettingsModal } from "../../components/SettingsModal";
+import dynamic from "next/dynamic";
 
-export default function StatusPage() {
+function StatusPageContent() {
   const { isConnected, pingTime, queuePendingCount, systemMetrics } = useRealtime();
 
   const [theme, setTheme] = useState<"light" | "dark">("dark");
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   
   // Interactive Options
   const [activeModel, setActiveModel] = useState("bge-reranker-large");
   const [nliRequired, setNliRequired] = useState(true);
 
-  // Sync theme
+  // Sync theme and local options
   useEffect(() => {
+    setMounted(true);
     const storedTheme = localStorage.getItem("theme");
     if (storedTheme === "light" || storedTheme === "dark") {
       setTheme(storedTheme);
@@ -43,6 +49,11 @@ export default function StatusPage() {
       document.documentElement.classList.add(initialTheme);
       document.documentElement.classList.remove(initialTheme === "dark" ? "light" : "dark");
     }
+
+    const savedReranker = localStorage.getItem("rag_reranker") || "bge-reranker-large";
+    const savedNli = localStorage.getItem("rag_nli") !== "false";
+    setActiveModel(savedReranker);
+    setNliRequired(savedNli);
   }, []);
 
   const toggleTheme = () => {
@@ -101,19 +112,32 @@ export default function StatusPage() {
           </nav>
         </div>
 
-        {/* Sidebar Footer with Theme Toggle */}
-        <div className="p-4 border-t border-border-subtle space-y-4">
-          <button 
-            onClick={toggleTheme}
-            className="w-full flex items-center justify-between px-4 py-2.5 rounded-lg border border-border-subtle bg-bg-surface hover:bg-bg-sidebar text-xs text-text-primary font-bold transition-all cursor-pointer shadow-sm"
-          >
-            <span className="flex items-center gap-2">
-              {theme === "dark" ? <Sun className="w-4 h-4 text-warning-text" /> : <Moon className="w-4 h-4 text-interactive-accent" />}
-              <span>{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
-            </span>
-            <span className="text-[10px] text-text-secondary font-mono">{theme.toUpperCase()}</span>
-          </button>
-        </div>
+        {/* Sidebar Footer with Settings and Actions */}
+        {mounted && (
+          <div className="p-4 border-t border-border-subtle space-y-2">
+            <button 
+              onClick={toggleTheme}
+              className="w-full flex items-center justify-between px-4 py-2.5 rounded-lg border border-border-subtle bg-bg-surface hover:bg-bg-sidebar text-xs text-text-primary font-bold transition-all cursor-pointer shadow-sm"
+            >
+              <span className="flex items-center gap-2">
+                {theme === "dark" ? <Sun className="w-4 h-4 text-warning-text" /> : <Moon className="w-4 h-4 text-interactive-accent" />}
+                <span>{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
+              </span>
+              <span className="text-[10px] text-text-secondary font-mono">{theme.toUpperCase()}</span>
+            </button>
+
+            <button 
+              onClick={() => setSettingsOpen(true)}
+              className="w-full flex items-center justify-between px-4 py-2.5 rounded-lg border border-border-subtle bg-bg-surface hover:bg-bg-sidebar text-xs text-text-primary font-bold transition-all cursor-pointer shadow-sm"
+            >
+              <span className="flex items-center gap-2">
+                <Settings className="w-4 h-4 text-interactive-accent" />
+                <span>Settings</span>
+              </span>
+              <span className="text-[10px] text-text-secondary font-mono">CFG</span>
+            </button>
+          </div>
+        )}
       </aside>
 
       {/* Main workplace */}
@@ -237,7 +261,7 @@ export default function StatusPage() {
                 <h4 className="text-xs font-bold text-text-secondary uppercase tracking-wider">Reranker Model</h4>
                 <select 
                   value={activeModel} 
-                  onChange={(e) => setActiveModel(e.target.value)}
+                  onChange={(e) => { setActiveModel(e.target.value); localStorage.setItem("rag_reranker", e.target.value); }}
                   className="w-full bg-bg-sidebar border border-border-subtle rounded-lg px-2 py-1 text-xs text-text-primary outline-none focus:border-interactive-accent"
                 >
                   <option value="bge-reranker-large">BGE-Reranker-Large</option>
@@ -267,7 +291,7 @@ export default function StatusPage() {
                   <p className="text-[10px] text-text-secondary mt-0.5">Require entailment check</p>
                 </div>
                 <button 
-                  onClick={() => setNliRequired(!nliRequired)}
+                  onClick={() => { const val = !nliRequired; setNliRequired(val); localStorage.setItem("rag_nli", String(val)); }}
                   className={`w-8 h-4 rounded-full p-0.5 transition-colors cursor-pointer ${nliRequired ? 'bg-interactive-accent' : 'bg-border-subtle'}`}
                 >
                   <div className={`w-3 h-3 rounded-full bg-bg-surface transition-transform ${nliRequired ? 'translate-x-4' : 'translate-x-0'}`} />
@@ -352,6 +376,18 @@ export default function StatusPage() {
         </div>
       </main>
 
+      <SettingsModal 
+        isOpen={settingsOpen} 
+        onClose={() => setSettingsOpen(false)} 
+        theme={theme} 
+        toggleTheme={toggleTheme} 
+        activeModel={activeModel}
+        setActiveModel={setActiveModel}
+        nliRequired={nliRequired}
+        setNliRequired={setNliRequired}
+      />
     </div>
   );
 }
+
+export default dynamic(() => Promise.resolve(StatusPageContent), { ssr: false });
