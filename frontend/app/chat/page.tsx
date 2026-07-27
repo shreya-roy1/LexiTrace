@@ -20,8 +20,11 @@ import {
   RefreshCw,
   Search,
   Zap,
-  ShieldCheck
+  ShieldCheck,
+  Settings
 } from "lucide-react";
+import { SettingsModal } from "../../components/SettingsModal";
+import dynamic from "next/dynamic";
 
 interface DocumentPayload {
   text: string;
@@ -44,7 +47,7 @@ interface Message {
   timestamp: Date;
 }
 
-export default function ChatPage() {
+function ChatPageContent() {
   const { isConnected, queuePendingCount } = useRealtime();
 
   const [messages, setMessages] = useState<Message[]>([
@@ -68,11 +71,14 @@ export default function ChatPage() {
 
   // Theme state
   const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Theme Sync on mount
   useEffect(() => {
+    setMounted(true);
     const storedTheme = localStorage.getItem("theme");
     if (storedTheme === "light" || storedTheme === "dark") {
       setTheme(storedTheme);
@@ -131,13 +137,18 @@ export default function ChatPage() {
     let incomingText = "";
     let incomingDocs: DocumentInfo[] = [];
 
+    const nliRequiredSetting = localStorage.getItem("rag_nli") !== "false";
+
     try {
       const response = await fetch("http://localhost:8000/api/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ query: textToSend }),
+        body: JSON.stringify({ 
+          query: textToSend,
+          nli_required: nliRequiredSetting
+        }),
       });
 
       if (!response.ok) {
@@ -518,19 +529,32 @@ export default function ChatPage() {
           </nav>
         </div>
 
-        {/* Sidebar Footer with Theme Toggle */}
-        <div className="p-4 border-t border-border-subtle">
-          <button 
-            onClick={toggleTheme}
-            className="w-full flex items-center justify-between px-4 py-2.5 rounded-lg border border-border-subtle bg-bg-surface hover:bg-bg-sidebar text-xs text-text-primary font-bold transition-all cursor-pointer shadow-sm"
-          >
-            <span className="flex items-center gap-2">
-              {theme === "dark" ? <Sun className="w-4 h-4 text-warning-text" /> : <Moon className="w-4 h-4 text-interactive-accent" />}
-              <span>{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
-            </span>
-            <span className="text-[10px] text-text-secondary font-mono">{theme.toUpperCase()}</span>
-          </button>
-        </div>
+        {/* Sidebar Footer with Settings and Actions */}
+        {mounted && (
+          <div className="p-4 border-t border-border-subtle space-y-2">
+            <button 
+              onClick={toggleTheme}
+              className="w-full flex items-center justify-between px-4 py-2.5 rounded-lg border border-border-subtle bg-bg-surface hover:bg-bg-sidebar text-xs text-text-primary font-bold transition-all cursor-pointer shadow-sm"
+            >
+              <span className="flex items-center gap-2">
+                {theme === "dark" ? <Sun className="w-4 h-4 text-warning-text" /> : <Moon className="w-4 h-4 text-interactive-accent" />}
+                <span>{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
+              </span>
+              <span className="text-[10px] text-text-secondary font-mono">{theme.toUpperCase()}</span>
+            </button>
+
+            <button 
+              onClick={() => setSettingsOpen(true)}
+              className="w-full flex items-center justify-between px-4 py-2.5 rounded-lg border border-border-subtle bg-bg-surface hover:bg-bg-sidebar text-xs text-text-primary font-bold transition-all cursor-pointer shadow-sm"
+            >
+              <span className="flex items-center gap-2">
+                <Settings className="w-4 h-4 text-interactive-accent" />
+                <span>Settings</span>
+              </span>
+              <span className="text-[10px] text-text-secondary font-mono">CFG</span>
+            </button>
+          </div>
+        )}
       </aside>
 
       {/* Main chat window */}
@@ -795,7 +819,7 @@ export default function ChatPage() {
                 </div>
                 <div>
                   <h3 className="font-bold text-text-primary text-sm tracking-wide">Citation Source [Doc {selectedDocIndex}]</h3>
-                  <span className="text-xs text-secondary-accent-text font-semibold font-mono">{selectedDoc.payload.source_pdf}</span>
+                  <span className="text-xs text-secondary-accent-text font-semibold font-mono">{selectedDoc.payload?.source_pdf ?? selectedDoc.source_pdf}</span>
                 </div>
               </div>
               <button 
@@ -813,20 +837,20 @@ export default function ChatPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-bg-sidebar p-4 rounded-xl border border-border-subtle shadow-sm hover:shadow transition-shadow">
                   <div className="text-[10px] text-text-secondary uppercase font-semibold tracking-wider">Page Number</div>
-                  <div className="text-lg font-bold text-text-primary mt-1">Page {selectedDoc.payload.page_number}</div>
+                  <div className="text-lg font-bold text-text-primary mt-1">Page {selectedDoc.payload?.page_number ?? selectedDoc.page_number}</div>
                 </div>
 
                 <div className="bg-bg-sidebar p-4 rounded-xl border border-border-subtle shadow-sm hover:shadow transition-shadow">
                   <div className="text-[10px] text-text-secondary uppercase font-semibold tracking-wider">OCR Confidence</div>
                   <div className="flex items-center gap-2 mt-1">
                     <span className={`text-lg font-bold ${
-                      selectedDoc.payload.confidence_score >= 0.85 
+                      (selectedDoc.payload?.confidence_score ?? selectedDoc.confidence_score) >= 0.85 
                         ? "text-emerald-500" 
                         : "text-warning-text"
                     }`}>
-                      {Math.round(selectedDoc.payload.confidence_score * 100)}%
+                      {Math.round((selectedDoc.payload?.confidence_score ?? selectedDoc.confidence_score) * 100)}%
                     </span>
-                    {selectedDoc.payload.confidence_score >= 0.85 ? (
+                    {(selectedDoc.payload?.confidence_score ?? selectedDoc.confidence_score) >= 0.85 ? (
                       <CheckCircle className="w-4 h-4 text-emerald-500" />
                     ) : (
                       <AlertTriangle className="w-4 h-4 text-warning-text" />
@@ -855,11 +879,11 @@ export default function ChatPage() {
               <div className="space-y-3">
                 <label className="text-[10px] text-text-secondary font-semibold uppercase tracking-wider">Extract Snippet</label>
                 <div className="bg-bg-sidebar p-5 rounded-xl border border-border-subtle text-text-primary text-sm leading-relaxed font-mono whitespace-pre-wrap select-all shadow-inner custom-scrollbar">
-                  {selectedDoc.payload.text}
+                  {selectedDoc.payload?.text ?? selectedDoc.text}
                 </div>
                 
                 {/* Low Confidence Alert */}
-                {selectedDoc.payload.confidence_score < 0.85 && (
+                {(selectedDoc.payload?.confidence_score ?? selectedDoc.confidence_score) < 0.85 && (
                   <div className="flex gap-3 bg-warning-bg border border-warning-text/10 rounded-xl p-4 text-xs text-warning-text leading-normal shadow-sm">
                     <ShieldAlert className="w-5 h-5 shrink-0 text-warning-text" />
                     <div>
@@ -881,6 +905,14 @@ export default function ChatPage() {
         )}
       </div>
 
+      <SettingsModal 
+        isOpen={settingsOpen} 
+        onClose={() => setSettingsOpen(false)} 
+        theme={theme} 
+        toggleTheme={toggleTheme} 
+      />
     </div>
   );
 }
+
+export default dynamic(() => Promise.resolve(ChatPageContent), { ssr: false });
