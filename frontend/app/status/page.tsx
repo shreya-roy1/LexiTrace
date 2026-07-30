@@ -64,6 +64,26 @@ function StatusPageContent() {
     }
   };
 
+  const isEngineOffline = !isConnected || systemMetrics.qdrant === "Disconnected" || systemMetrics.redis === "Offline";
+  const hasQueries = analytics && analytics.queries_today > 0;
+
+  const getMetricValueText = (val: number) => {
+    if (isEngineOffline) return "N/A (Engine Offline)";
+    if (!hasQueries) return "N/A (No Queries Processed)";
+    return `${Math.round(val * 100)}%`;
+  };
+
+  const getMetricBarWidth = (val: number) => {
+    if (isEngineOffline || !hasQueries) return "0%";
+    return `${val * 100}%`;
+  };
+
+  const getLatencyText = (val: number | undefined, defaultVal: string) => {
+    if (isEngineOffline) return "N/A";
+    if (!hasQueries) return "N/A";
+    return `${val !== undefined ? val.toFixed(0) : defaultVal}ms`;
+  };
+
   // Sync theme and local options
   useEffect(() => {
     setMounted(true);
@@ -100,6 +120,7 @@ function StatusPageContent() {
 
   const syncSettingsToBackend = async (model: string, nli: boolean) => {
     try {
+      const activeLLM = localStorage.getItem("rag_model") || "gpt-4o";
       await fetch("http://localhost:8000/api/settings", {
         method: "POST",
         headers: {
@@ -108,7 +129,7 @@ function StatusPageContent() {
         body: JSON.stringify({
           reranker_model: model,
           nli_required: nli,
-          llm_model: localStorage.getItem("rag_model") || "gpt-4o"
+          llm_model: activeLLM
         }),
       });
     } catch (e) {
@@ -117,56 +138,58 @@ function StatusPageContent() {
   };
 
   return (
-    <div className="flex h-screen bg-bg-canvas text-text-primary overflow-hidden font-sans">
+    <div className={`flex h-screen bg-bg-canvas overflow-hidden ${theme}`}>
       
       {/* Sidebar Navigation */}
-      <aside className="w-64 bg-bg-sidebar border-r border-border-subtle flex flex-col justify-between shrink-0 hidden md:flex">
-        <div className="flex flex-col">
-          {/* Logo - Minimal Typography Design */}
-          <div className="p-6 border-b border-border-subtle">
-            <h1 className="font-extrabold text-xl tracking-wider text-text-primary">LexiTrace</h1>
-            <span className="text-[9px] text-text-secondary font-bold uppercase tracking-widest block mt-0.5">Enterprise RAG</span>
+      <aside className="w-64 bg-bg-sidebar/95 border-r border-border-subtle flex flex-col backdrop-blur-md z-20 shrink-0">
+        {/* Brand Header */}
+        <div className="h-16 flex items-center px-6 border-b border-border-subtle">
+          <div className="flex items-center gap-2.5">
+            <span className="p-1.5 rounded-lg bg-interactive-accent text-bg-sidebar">
+              <Layers className="w-4 h-4 shrink-0 text-[#38BDF8]" />
+            </span>
+            <span className="font-extrabold text-sm tracking-widest text-text-primary uppercase">LexiTrace</span>
           </div>
-          
-          {/* Nav menu */}
-          <nav className="p-4 space-y-1">
-            <Link 
-              href="/chat" 
-              className="flex items-center gap-3 px-4 py-3 border-l-2 border-transparent text-text-secondary hover:bg-bg-surface hover:text-text-primary transition-all rounded-r-md font-medium"
-            >
-              <MessageSquare className="w-5 h-5" />
-              <span>Conversational Chat</span>
-            </Link>
-            <Link 
-              href="/review" 
-              className="flex items-center justify-between px-4 py-3 border-l-2 border-transparent text-text-secondary hover:bg-bg-surface hover:text-text-primary transition-all rounded-r-md font-medium"
-            >
-              <span className="flex items-center gap-3">
-                <LayoutDashboard className="w-5 h-5" />
-                <span>HITL Review Queue</span>
-              </span>
-              {queuePendingCount > 0 && (
-                <span className="px-2 py-0.5 rounded-full bg-critical-bg text-critical-text text-[10px] font-bold shadow-xs">
-                  {queuePendingCount}
-                </span>
-              )}
-            </Link>
-            <Link 
-              href="/status" 
-              className="flex items-center justify-between px-4 py-3 border-l-2 border-interactive-accent bg-bg-surface text-text-primary font-bold transition-all rounded-r-md"
-            >
-              <span className="flex items-center gap-3">
-                <Activity className="w-5 h-5 text-interactive-accent" />
-                <span>System Status</span>
-              </span>
-              {systemAlertsCount > 0 && (
-                <span className="px-2 py-0.5 rounded-full bg-critical-bg text-critical-text text-[10px] font-bold shadow-sm">
-                  {systemAlertsCount}
-                </span>
-              )}
-            </Link>
-          </nav>
         </div>
+        
+        {/* Nav menu */}
+        <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+          <Link 
+            href="/chat" 
+            className="flex items-center gap-3 px-4 py-3 border-l-2 border-transparent text-text-secondary hover:bg-bg-surface hover:text-text-primary transition-all rounded-r-md font-medium"
+          >
+            <MessageSquare className="w-5 h-5" />
+            <span>Conversational Chat</span>
+          </Link>
+          <Link 
+            href="/review" 
+            className="flex items-center justify-between px-4 py-3 border-l-2 border-transparent text-text-secondary hover:bg-bg-surface hover:text-text-primary transition-all rounded-r-md font-medium"
+          >
+            <span className="flex items-center gap-3">
+              <LayoutDashboard className="w-5 h-5" />
+              <span>HITL Review Queue</span>
+            </span>
+            {queuePendingCount > 0 && (
+              <span className="px-2 py-0.5 rounded-full bg-critical-bg text-critical-text text-[10px] font-bold shadow-xs">
+                {queuePendingCount}
+              </span>
+            )}
+          </Link>
+          <Link 
+            href="/status" 
+            className="flex items-center justify-between px-4 py-3 border-l-2 border-interactive-accent bg-bg-surface text-text-primary font-bold transition-all rounded-r-md"
+          >
+            <span className="flex items-center gap-3">
+              <Activity className="w-5 h-5 text-interactive-accent" />
+              <span>System Status</span>
+            </span>
+            {systemAlertsCount > 0 && (
+              <span className="px-2 py-0.5 rounded-full bg-critical-bg text-critical-text text-[10px] font-bold shadow-sm">
+                {systemAlertsCount}
+              </span>
+            )}
+          </Link>
+        </nav>
 
         {/* Sidebar Footer with Settings and Actions */}
         {mounted && (
@@ -287,19 +310,19 @@ function StatusPageContent() {
                   <Database className="w-5 h-5" />
                 </span>
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                  systemMetrics.qdrant === "Local Active" 
-                    ? "text-primary-accent bg-secondary-accent-bg" 
+                  systemMetrics.qdrant === "Local Active" || systemMetrics.qdrant === "Memory Active" || systemMetrics.qdrant === "Server Active"
+                    ? "text-emerald-500 bg-emerald-500/10" 
                     : "text-critical-text bg-critical-bg"
                 }`}>
-                  {systemMetrics.qdrant}
+                  {systemMetrics.qdrant === "Local Active" || systemMetrics.qdrant === "Memory Active" || systemMetrics.qdrant === "Server Active" ? "Connected" : "Disconnected"}
                 </span>
               </div>
               <div>
                 <h4 className="text-xs font-bold text-text-secondary uppercase tracking-wider">Qdrant Vector Store</h4>
                 <p className="text-sm font-semibold text-text-primary mt-1">
-                  Status: {systemMetrics.qdrant === "Local Active" ? "Connected" : "Disconnected"}
+                  Status: {systemMetrics.qdrant === "Local Active" || systemMetrics.qdrant === "Memory Active" || systemMetrics.qdrant === "Server Active" ? "Connected" : "Disconnected"}
                 </p>
-                <p className="text-[10px] text-text-secondary mt-0.5">Collection: enterprise_docs</p>
+                <p className="text-[10px] text-text-secondary mt-0.5">Type: {systemMetrics.qdrant}</p>
               </div>
             </div>
 
@@ -309,23 +332,23 @@ function StatusPageContent() {
                 <span className="p-2 rounded-lg bg-secondary-accent-bg text-secondary-accent-text">
                   <Cpu className="w-5 h-5" />
                 </span>
-                <span className="text-[10px] font-bold text-text-primary bg-citation-std-bg px-2 py-0.5 rounded-full uppercase">
-                  {activeModel === "bge-reranker-large" ? "BAAI/bge" : activeModel === "cohere-rerank-v3" ? "Cohere Rerank v3" : "No Reranking"}
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full text-emerald-500 bg-emerald-500/10">
+                  RRF Active
                 </span>
               </div>
               <div className="space-y-1">
-                <h4 className="text-xs font-bold text-text-secondary uppercase tracking-wider">Reranker Model</h4>
+                <h4 className="text-xs font-bold text-text-secondary uppercase tracking-wider">Retrieval Router</h4>
                 <select 
                   value={activeModel} 
                   onChange={(e) => { 
-                    const val = e.target.value;
-                    setActiveModel(val); 
-                    localStorage.setItem("rag_reranker", val); 
-                    syncSettingsToBackend(val, nliRequired);
+                    const model = e.target.value;
+                    setActiveModel(model); 
+                    localStorage.setItem("rag_reranker", model); 
+                    syncSettingsToBackend(model, nliRequired);
                   }}
-                  className="w-full bg-bg-sidebar border border-border-subtle rounded-lg px-2 py-1 text-xs text-text-primary outline-none focus:border-interactive-accent"
+                  className="w-full bg-bg-sidebar border border-border-subtle rounded-lg px-2 py-1 text-xs text-text-primary outline-none focus:border-interactive-accent font-medium cursor-pointer"
                 >
-                  <option value="bge-reranker-large">BGE-Reranker-Large</option>
+                  <option value="bge-reranker-large">BGE Reranker Large</option>
                   <option value="cohere-rerank-v3">Cohere Rerank v3</option>
                   <option value="none">No Reranking</option>
                 </select>
@@ -383,13 +406,13 @@ function StatusPageContent() {
                   <div className="flex justify-between text-xs font-semibold text-text-secondary">
                     <span>Context Precision (Retrieval Relevance)</span>
                     <span className="font-mono text-text-primary">
-                      {analytics ? Math.round(analytics.rag_triad.context_precision * 100) : 94}%
+                      {getMetricValueText(analytics ? analytics.rag_triad.context_precision : 0.94)}
                     </span>
                   </div>
                   <div className="w-full bg-border-subtle h-2 rounded-full overflow-hidden">
                     <div 
                       className="bg-emerald-500 h-2 rounded-full transition-all duration-500"
-                      style={{ width: `${(analytics ? analytics.rag_triad.context_precision : 0.94) * 100}%` }}
+                      style={{ width: getMetricBarWidth(analytics ? analytics.rag_triad.context_precision : 0.94) }}
                     />
                   </div>
                 </div>
@@ -399,13 +422,13 @@ function StatusPageContent() {
                   <div className="flex justify-between text-xs font-semibold text-text-secondary">
                     <span>Faithfulness (Groundedness / Hallucination Guard)</span>
                     <span className="font-mono text-text-primary">
-                      {analytics ? Math.round(analytics.rag_triad.faithfulness * 100) : 91}%
+                      {getMetricValueText(analytics ? analytics.rag_triad.faithfulness : 0.91)}
                     </span>
                   </div>
                   <div className="w-full bg-border-subtle h-2 rounded-full overflow-hidden">
                     <div 
-                      className="bg-[#3B82F6] h-2 rounded-full transition-all duration-500"
-                      style={{ width: `${(analytics ? analytics.rag_triad.faithfulness : 0.91) * 100}%` }}
+                      className="bg-[#38BDF8] h-2 rounded-full transition-all duration-500"
+                      style={{ width: getMetricBarWidth(analytics ? analytics.rag_triad.faithfulness : 0.91) }}
                     />
                   </div>
                 </div>
@@ -415,13 +438,13 @@ function StatusPageContent() {
                   <div className="flex justify-between text-xs font-semibold text-text-secondary">
                     <span>Answer Relevance (Query Match)</span>
                     <span className="font-mono text-text-primary">
-                      {analytics ? Math.round(analytics.rag_triad.answer_relevance * 100) : 95}%
+                      {getMetricValueText(analytics ? analytics.rag_triad.answer_relevance : 0.95)}
                     </span>
                   </div>
                   <div className="w-full bg-border-subtle h-2 rounded-full overflow-hidden">
                     <div 
                       className="bg-purple-500 h-2 rounded-full transition-all duration-500"
-                      style={{ width: `${(analytics ? analytics.rag_triad.answer_relevance : 0.95) * 100}%` }}
+                      style={{ width: getMetricBarWidth(analytics ? analytics.rag_triad.answer_relevance : 0.95) }}
                     />
                   </div>
                 </div>
@@ -431,7 +454,7 @@ function StatusPageContent() {
             {/* Token & Cost / Latency Observability Card */}
             <div className="bg-bg-surface p-6 rounded-xl border border-border-subtle shadow-xs space-y-4">
               <h3 className="font-bold text-text-primary text-sm tracking-wide flex items-center gap-2">
-                <Activity className="w-4.5 h-4.5 text-[#3B82F6]" />
+                <Activity className="w-4.5 h-4.5 text-[#38BDF8]" />
                 <span>Production Observability & Cost Tracking</span>
               </h3>
               
@@ -439,13 +462,13 @@ function StatusPageContent() {
                 <div className="bg-bg-sidebar p-3.5 rounded-xl border border-border-subtle">
                   <div className="text-[10px] text-text-secondary uppercase font-semibold">Queries Processed (Today)</div>
                   <div className="text-xl font-bold text-text-primary mt-1">
-                    {analytics ? analytics.queries_today : 0}
+                    {isEngineOffline ? "N/A" : (analytics ? analytics.queries_today : 0)}
                   </div>
                 </div>
                 <div className="bg-bg-sidebar p-3.5 rounded-xl border border-border-subtle">
                   <div className="text-[10px] text-text-secondary uppercase font-semibold">LLM Cost Accrued (Today)</div>
                   <div className="text-xl font-bold text-text-primary mt-1 font-mono">
-                    ${analytics ? analytics.total_cost.toFixed(4) : "0.0000"}
+                    {isEngineOffline ? "N/A" : `$${analytics ? analytics.total_cost.toFixed(4) : "0.0000"}`}
                   </div>
                 </div>
               </div>
@@ -457,25 +480,25 @@ function StatusPageContent() {
                   <div className="bg-bg-sidebar p-2 rounded-lg border border-border-subtle">
                     <div className="text-[8px] text-text-secondary font-semibold uppercase">Search</div>
                     <div className="text-xs font-extrabold text-text-primary font-mono mt-0.5">
-                      {analytics ? analytics.average_latencies.retrieval.toFixed(0) : "115"}ms
+                      {getLatencyText(analytics?.average_latencies.retrieval, "115")}
                     </div>
                   </div>
                   <div className="bg-bg-sidebar p-2 rounded-lg border border-border-subtle">
                     <div className="text-[8px] text-text-secondary font-semibold uppercase">Rerank</div>
                     <div className="text-xs font-extrabold text-text-primary font-mono mt-0.5">
-                      {analytics ? analytics.average_latencies.rerank.toFixed(0) : "75"}ms
+                      {getLatencyText(analytics?.average_latencies.rerank, "75")}
                     </div>
                   </div>
                   <div className="bg-bg-sidebar p-2 rounded-lg border border-border-subtle">
                     <div className="text-[8px] text-text-secondary font-semibold uppercase">Gen</div>
-                    <div className="text-xs font-extrabold text-[#3B82F6] font-mono mt-0.5">
-                      {analytics ? analytics.average_latencies.generation.toFixed(0) : "480"}ms
+                    <div className="text-xs font-extrabold text-[#38BDF8] font-mono mt-0.5">
+                      {getLatencyText(analytics?.average_latencies.generation, "480")}
                     </div>
                   </div>
                   <div className="bg-bg-sidebar p-2 rounded-lg border border-border-subtle">
                     <div className="text-[8px] text-text-secondary font-semibold uppercase">NLI</div>
                     <div className="text-xs font-extrabold text-text-primary font-mono mt-0.5">
-                      {analytics ? analytics.average_latencies.nli.toFixed(0) : "150"}ms
+                      {getLatencyText(analytics?.average_latencies.nli, "150")}
                     </div>
                   </div>
                 </div>
