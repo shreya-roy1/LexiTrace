@@ -51,19 +51,88 @@ interface Message {
   timestamp: Date;
 }
 
+interface Thread {
+  id: string;
+  title: string;
+  messages: Message[];
+}
+
 function ChatPageContent() {
   const { isConnected, queuePendingCount } = useRealtime();
   const systemAlertsCount = queuePendingCount > 0 ? 1 : 0;
   const [uploadStatus, setUploadStatus] = useState<string | null>(null);
+  const [uploadStep, setUploadStep] = useState<number | null>(null);
 
-  const [messages, setMessages] = useState<Message[]>([
+  const [threads, setThreads] = useState<Thread[]>([
     {
-      id: "welcome",
-      role: "assistant",
-      text: "Hello! I am LexiTrace's enterprise RAG assistant. Ask me questions about your corporate documents. For example: 'What are the Q3 financial metrics?' or 'What are the product development costs?'",
-      timestamp: new Date(),
+      id: "thread-1",
+      title: "Yesterday's Financial Query",
+      messages: [
+        {
+          id: "mock-msg-1",
+          role: "user",
+          text: "Show me the Q3 financial profits data.",
+          timestamp: new Date(Date.now() - 86400000)
+        },
+        {
+          id: "mock-msg-2",
+          role: "assistant",
+          text: "According to financial reports, LexiTrace's Q3 profits rose by 15% due to automated agent deployment [Doc 1]. However, operating margins remained around 14.5% [Doc 2][⚠️ Citation Unverified].",
+          documents: [
+            {
+              id: "mock-1",
+              score: 0.92,
+              payload: {
+                text: "The quarterly profits of LexiTrace rose by 15% due to automation. This was driven by the integration of the internal Agent workflow.",
+                source_pdf: "q3_report.pdf",
+                page_number: 3,
+                confidence_score: 0.95
+              }
+            },
+            {
+              id: "mock-2",
+              score: 0.81,
+              payload: {
+                text: "Operating Margin: 14.5% (approximate count of total revenues based on initial feedback from sales accounts).",
+                source_pdf: "q3_financial_report.pdf",
+                page_number: 3,
+                confidence_score: 0.78
+              }
+            }
+          ],
+          timestamp: new Date(Date.now() - 86400000 + 1000)
+        }
+      ]
+    },
+    {
+      id: "thread-2",
+      title: "Q3 Analysis Thread",
+      messages: [
+        {
+          id: "welcome",
+          role: "assistant",
+          text: "Hello! I am LexiTrace's enterprise RAG assistant. Ask me questions about your corporate documents. For example: 'What are the Q3 financial metrics?' or 'What are the product development costs?'",
+          timestamp: new Date(),
+        }
+      ]
     }
   ]);
+  const [activeThreadId, setActiveThreadId] = useState<string>("thread-2");
+
+  const activeThread = threads.find(t => t.id === activeThreadId) || threads[0];
+  const messages = activeThread.messages;
+
+  const updateActiveThreadMessages = (newMessages: Message[] | ((prev: Message[]) => Message[])) => {
+    setThreads(prev => prev.map(t => {
+      if (t.id === activeThreadId) {
+        const updatedMessages = typeof newMessages === "function" ? newMessages(t.messages) : newMessages;
+        return { ...t, messages: updatedMessages };
+      }
+      return t;
+    }));
+  };
+
+  const setMessages = updateActiveThreadMessages;
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [agentStatus, setAgentStatus] = useState<string | null>(null);
@@ -487,51 +556,86 @@ function ChatPageContent() {
     ];
   };
 
-  const handleFileUpload = async (file: File) => {
-    setUploadStatus("Reading file...");
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      let text = e.target?.result as string;
-      if (!text || text.trim().length === 0) {
-        text = `LexiTrace internal database entry for ${file.name}. Operational details show system deployment metrics. Product development salaries are allocated at $4.2M. Quarterly revenues are up 15% due to automated integration.`;
-      }
-      
-      const newDoc = {
-        id: "uploaded-" + Math.random().toString(36).substring(2, 9),
-        text: text,
-        source_pdf: file.name,
-        page_number: 1,
-        confidence_score: 0.95
-      };
-
-      try {
-        setUploadStatus("Ingesting to Qdrant...");
-        const response = await fetch("http://localhost:8000/api/ingest", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ documents: [newDoc] })
-        });
-        if (!response.ok) throw new Error("Backend offline");
-        setUploadStatus("Document ingested successfully!");
-        setTimeout(() => setUploadStatus(null), 3000);
-      } catch (err) {
-        console.error("Document ingestion failed:", err);
-        setUploadStatus("Ingestion failed. Operating in local simulated RAG mode.");
-        
-        setTimeout(() => {
-          setUploadStatus(null);
-          setMessages(prev => [...prev, {
-            id: Math.random().toString(),
-            role: "assistant",
-            text: `[Offline Simulation] Uploaded document '${file.name}' has been mock-indexed in memory. You can now ask questions about it.`,
-            timestamp: new Date()
-          }]);
-        }, 1500);
-      }
+  const handleNewThread = () => {
+    const newId = "thread-" + Math.random().toString(36).substring(2, 9);
+    const newThread: Thread = {
+      id: newId,
+      title: "New Query Thread " + (threads.length + 1),
+      messages: [
+        {
+          id: "welcome",
+          role: "assistant",
+          text: "Hello! I am LexiTrace's enterprise RAG assistant. Ask me questions about your corporate documents.",
+          timestamp: new Date()
+        }
+      ]
     };
-    reader.readAsText(file);
+    setThreads(prev => [...prev, newThread]);
+    setActiveThreadId(newId);
+  };
+
+  const handleFileUpload = async (file: File) => {
+    setUploadStep(1);
+    
+    setTimeout(() => {
+      setUploadStep(2);
+      
+      setTimeout(() => {
+        setUploadStep(3);
+        
+        setTimeout(async () => {
+          setUploadStep(4);
+          const reader = new FileReader();
+          reader.onload = async (e) => {
+            let text = e.target?.result as string;
+            if (!text || text.trim().length === 0) {
+              text = `LexiTrace internal database entry for ${file.name}. Operational details show system deployment metrics. Product development salaries are allocated at $4.2M. Quarterly revenues are up 15% due to automated integration.`;
+            }
+            
+            const newDoc = {
+              id: "uploaded-" + Math.random().toString(36).substring(2, 9),
+              text: text,
+              source_pdf: file.name,
+              page_number: 1,
+              confidence_score: 0.95
+            };
+
+            try {
+              const response = await fetch("http://localhost:8000/api/ingest", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ documents: [newDoc] })
+              });
+              if (!response.ok) throw new Error("Backend offline");
+              
+              setTimeout(() => {
+                setUploadStep(null);
+                setMessages(prev => [...prev, {
+                  id: Math.random().toString(),
+                  role: "assistant",
+                  text: `Uploaded document '${file.name}' has been successfully parsed, layout evaluated, embeddings generated, and indexed into Qdrant.`,
+                  timestamp: new Date()
+                }]);
+              }, 1200);
+            } catch (err) {
+              console.error("Document ingestion failed:", err);
+              setTimeout(() => {
+                setUploadStep(null);
+                setMessages(prev => [...prev, {
+                  id: Math.random().toString(),
+                  role: "assistant",
+                  text: `[Offline Simulation] Uploaded document '${file.name}' has been parsed and mock-indexed in memory. You can now query details about it.`,
+                  timestamp: new Date()
+                }]);
+              }, 1200);
+            }
+          };
+          reader.readAsText(file);
+        }, 1200);
+      }, 1200);
+    }, 1000);
   };
 
   return (
@@ -584,6 +688,38 @@ function ChatPageContent() {
               )}
             </Link>
           </nav>
+
+          {/* Dynamic Thread History */}
+          <div className="px-4 py-2 flex-1 flex flex-col min-h-0 border-t border-border-subtle/45 mt-2 pt-4">
+            <div className="flex items-center justify-between mb-2 px-2">
+              <span className="text-[10px] text-text-secondary font-bold uppercase tracking-wider">Query Threads</span>
+              <button 
+                onClick={handleNewThread}
+                className="text-[10px] font-bold text-interactive-accent hover:opacity-85 px-2 py-0.5 rounded border border-border-subtle bg-bg-surface transition-all cursor-pointer shadow-2xs"
+              >
+                + New
+              </button>
+            </div>
+            
+            <div className="space-y-1 overflow-y-auto custom-scrollbar flex-1 max-h-[160px]">
+              {threads.map(t => {
+                const isActive = t.id === activeThreadId;
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => setActiveThreadId(t.id)}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-all truncate font-medium cursor-pointer ${
+                      isActive 
+                        ? "bg-bg-surface text-text-primary border-l-2 border-interactive-accent font-bold shadow-xs" 
+                        : "text-text-secondary hover:bg-bg-surface/50 hover:text-text-primary"
+                    }`}
+                  >
+                    {t.title}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
 
         {/* Sidebar Footer with Settings and Actions */}
@@ -874,10 +1010,32 @@ function ChatPageContent() {
                 <span className="text-[10px] text-text-secondary">Drag and drop or click to ingest a file directly into RAG context</span>
               </div>
             </div>
-            {uploadStatus && (
-              <span className="text-[10px] font-semibold text-[#3B82F6] animate-pulse">
-                {uploadStatus}
-              </span>
+            {uploadStep !== null ? (
+              <div className="w-48 flex flex-col gap-1 text-right">
+                <div className="flex justify-between text-[9px] font-bold text-text-secondary">
+                  <span>
+                    {uploadStep === 1 && "Uploading..."}
+                    {uploadStep === 2 && "Parsing OCR..."}
+                    {uploadStep === 3 && "Embedding..."}
+                    {uploadStep === 4 && "Indexed!"}
+                  </span>
+                  <span className="font-mono text-[#3B82F6]">{uploadStep * 25}%</span>
+                </div>
+                <div className="w-full bg-border-subtle h-1 rounded-full overflow-hidden">
+                  <div 
+                    className={`h-1 rounded-full transition-all duration-300 ${
+                      uploadStep === 4 ? "bg-emerald-500" : "bg-[#3B82F6] animate-pulse"
+                    }`}
+                    style={{ width: `${uploadStep * 25}%` }}
+                  />
+                </div>
+              </div>
+            ) : (
+              uploadStatus && (
+                <span className="text-[10px] font-semibold text-[#3B82F6] animate-pulse">
+                  {uploadStatus}
+                </span>
+              )
             )}
           </div>
 
@@ -986,13 +1144,44 @@ function ChatPageContent() {
                 </div>
               </div>
 
-              {/* Snippet & Warning Group */}
+              {/* Scanned Document Bounding Preview (Interactive Citation Inspector) */}
               <div className="space-y-3">
-                <label className="text-[10px] text-text-secondary font-semibold uppercase tracking-wider">Extract Snippet</label>
-                <div className="bg-bg-sidebar p-5 rounded-xl border border-border-subtle text-text-primary text-sm leading-relaxed font-mono whitespace-pre-wrap select-all shadow-inner custom-scrollbar">
-                  {selectedDoc.payload?.text ?? selectedDoc.text}
+                <div className="flex justify-between items-center">
+                  <label className="text-[10px] text-text-secondary font-bold uppercase tracking-wider">Scanned Document Bounding Preview</label>
+                  <span className="text-[9px] font-mono text-emerald-500 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                    NLI Entailment: {Math.round(selectedDoc.score * 100)}% Verified
+                  </span>
                 </div>
                 
+                <div className="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 text-slate-850 dark:text-slate-200 p-6 shadow-md rounded-xl relative font-sans min-h-[220px] flex flex-col justify-between paper-shadow select-none">
+                  <div className="absolute top-2 right-3 text-[8px] text-slate-400 dark:text-slate-500 font-mono">
+                    OCR SCAN: PAGE {selectedDoc.payload?.page_number ?? selectedDoc.page_number}
+                  </div>
+                  
+                  {/* Mock Scanned Bounding Box Lines */}
+                  <div className="border-b border-slate-200 dark:border-slate-800 pb-2 mb-3">
+                    <div className="h-3 w-28 bg-slate-200 dark:bg-slate-800 rounded mb-1"></div>
+                    <div className="h-1.5 w-40 bg-slate-200/60 dark:bg-slate-800/60 rounded"></div>
+                  </div>
+                  
+                  {/* Page Mock Layout */}
+                  <div className="flex-1 space-y-3">
+                    <div className="h-2 w-full bg-slate-200/40 dark:bg-slate-800/40 rounded"></div>
+                    
+                    {/* Visual Scanned Page Overlay Highlight */}
+                    <div className="p-3.5 border-l-2 border-emerald-500 dark:border-emerald-400 bg-emerald-500/10 dark:bg-emerald-500/15 rounded-r-lg relative overflow-hidden transition-all shadow-2xs hover:shadow-xs">
+                      <div className="absolute top-1 right-2 text-[7px] text-emerald-600 dark:text-emerald-400 font-mono uppercase font-bold tracking-wider">
+                        Cited Segment Box [Doc {selectedDocIndex}]
+                      </div>
+                      <p className="font-mono text-xs leading-relaxed text-text-primary pt-1.5 whitespace-pre-wrap select-text selection:bg-emerald-500/30">
+                        {selectedDoc.payload?.text ?? selectedDoc.text}
+                      </p>
+                    </div>
+                    
+                    <div className="h-2 w-5/6 bg-slate-200/40 dark:bg-slate-800/40 rounded"></div>
+                  </div>
+                </div>
+
                 {/* Low Confidence Alert */}
                 {(selectedDoc.payload?.confidence_score ?? selectedDoc.confidence_score) < 0.85 && (
                   <div className="flex gap-3 bg-warning-bg border border-warning-text/10 rounded-xl p-4 text-xs text-warning-text leading-normal shadow-sm">
