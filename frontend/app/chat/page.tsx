@@ -22,7 +22,8 @@ import {
   Zap,
   ShieldCheck,
   Settings,
-  Paperclip
+  Paperclip,
+  Layers
 } from "lucide-react";
 import { SettingsModal } from "../../components/SettingsModal";
 import dynamic from "next/dynamic";
@@ -703,12 +704,21 @@ function ChatPageContent() {
     <div className="flex h-screen bg-bg-canvas text-text-primary overflow-hidden font-sans">
       
       {/* Sidebar Navigation */}
-      <aside className="w-64 bg-bg-sidebar border-r border-border-subtle flex flex-col justify-between shrink-0 hidden md:flex">
+      <aside className="w-64 bg-bg-sidebar/95 border-r border-border-subtle flex flex-col justify-between shrink-0 backdrop-blur-md z-20 hidden md:flex">
         <div className="flex flex-col">
-          {/* Logo - Minimal Typography Design */}
-          <div className="p-6 border-b border-border-subtle">
-            <h1 className="font-extrabold text-xl tracking-wider text-text-primary">LexiTrace</h1>
-            <span className="text-[9px] text-text-secondary font-bold uppercase tracking-widest block mt-0.5">Enterprise RAG</span>
+          {/* Brand Header */}
+          <div className="h-16 flex items-center px-6 border-b border-border-subtle shrink-0">
+            <div className="flex items-center gap-3">
+              {/* High-tech Glowing Icon */}
+              <div className="relative flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500/20 to-indigo-500/20 border border-cyan-500/35 shadow-[0_0_15px_rgba(56,189,248,0.25)] overflow-hidden">
+                <div className="absolute inset-0 bg-cyan-500/10 animate-pulse"></div>
+                <Layers className="w-4.5 h-4.5 text-[#38BDF8] shrink-0" />
+              </div>
+              <div>
+                <span className="font-extrabold text-sm tracking-widest text-text-primary uppercase block">LexiTrace</span>
+                <span className="text-[8px] text-text-secondary font-bold uppercase tracking-widest block -mt-0.5">Enterprise RAG</span>
+              </div>
+            </div>
           </div>
           
           {/* Nav menu */}
