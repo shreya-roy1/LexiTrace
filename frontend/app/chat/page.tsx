@@ -758,9 +758,12 @@ function ChatPageContent() {
       
       {/* Sidebar Navigation */}
       <aside 
-        className={`bg-bg-sidebar/95 border-r border-border-subtle flex flex-col justify-between shrink-0 backdrop-blur-md z-20 transition-all duration-300 ease-in-out ${
-          sidebarOpen ? "w-64 opacity-100" : "w-0 opacity-0 overflow-hidden border-r-0 pointer-events-none"
+        className={`bg-bg-sidebar/95 border-r border-border-subtle flex flex-col justify-between shrink-0 backdrop-blur-md z-20 relative ${
+          isResizing ? "" : "transition-all duration-300 ease-in-out"
+        } ${
+          sidebarOpen ? "opacity-100" : "opacity-0 overflow-hidden border-r-0 pointer-events-none"
         } hidden md:flex`}
+        style={{ width: sidebarOpen ? `${sidebarWidth}px` : '0px' }}
       >
         <div className="flex flex-col">
           {/* Brand Header */}
@@ -875,6 +878,16 @@ function ChatPageContent() {
               <span className="text-[10px] text-text-secondary font-mono">CFG</span>
             </button>
           </div>
+        )}
+
+        {/* Resize Handle */}
+        {sidebarOpen && (
+          <div 
+            onMouseDown={startResizing}
+            className={`absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-interactive-accent/30 z-30 transition-all ${
+              isResizing ? "bg-interactive-accent/50 w-1.5" : "bg-transparent"
+            }`}
+          />
         )}
       </aside>
 
