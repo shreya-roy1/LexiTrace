@@ -42,6 +42,7 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const reconnectDelayRef = useRef(1000); // Start at 1s
   const pingStartRef = useRef<number>(0);
   const lastEventIdRef = useRef<number | null>(null);
+  const disconnectTimeoutRef = useRef<any>(null);
 
   const connect = () => {
     try {
@@ -55,6 +56,10 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       ws.onopen = () => {
         console.log("WebSocket connected successfully.");
+        if (disconnectTimeoutRef.current) {
+          clearTimeout(disconnectTimeoutRef.current);
+          disconnectTimeoutRef.current = null;
+        }
         setIsConnected(true);
         reconnectDelayRef.current = 1000; // Reset reconnect delay
 
@@ -100,11 +105,16 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       ws.onclose = () => {
         console.log("WebSocket connection closed.");
-        setIsConnected(false);
-        setSystemMetrics(prev => ({
-          ...prev,
-          fastapi: "Disconnected"
-        }));
+        if (!disconnectTimeoutRef.current) {
+          disconnectTimeoutRef.current = setTimeout(() => {
+            setIsConnected(false);
+            setSystemMetrics(prev => ({
+              ...prev,
+              fastapi: "Disconnected"
+            }));
+            disconnectTimeoutRef.current = null;
+          }, 2000);
+        }
         scheduleReconnect();
       };
 
