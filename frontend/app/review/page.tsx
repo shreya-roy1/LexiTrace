@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRealtime } from "../../context/RealtimeContext";
 
@@ -44,6 +44,24 @@ function ReviewPageContent() {
   const [loading, setLoading] = useState(true);
   const [actioning, setActioning] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [uploadStep, setUploadStep] = useState<number | null>(null);
+
+  const mockQueueRef = useRef<IngestDocument[]>([
+    {
+      id: "lc-doc-1",
+      text: "Table 3: Q3 financial metrics.\nRevenue: $12.4M (up 8% YoY)\nNet Income: $1.8M\nOperating Margin: 14.5% (approximate count)",
+      source_pdf: "q3_financial_report.pdf",
+      page_number: 3,
+      confidence_score: 0.78
+    },
+    {
+      id: "lc-doc-2",
+      text: "Product Development Costs\nSalaries: $4.2M\nInfrastructure: $1.1M\nLicensing: $0.3M\nTotal: $5.6M (estimates)",
+      source_pdf: "cost_breakdown_2024.pdf",
+      page_number: 5,
+      confidence_score: 0.65
+    }
+  ]);
   
   // Theme state
   const [theme, setTheme] = useState<"light" | "dark">("dark");
@@ -67,26 +85,9 @@ function ReviewPageContent() {
       }
     } catch (error) {
       console.error("Failed to load review queue from backend:", error);
-      
-      const mockQueue: IngestDocument[] = [
-        {
-          id: "lc-doc-1",
-          text: "Table 3: Q3 financial metrics.\nRevenue: $12.4M (up 8% YoY)\nNet Income: $1.8M\nOperating Margin: 14.5% (approximate count)",
-          source_pdf: "q3_financial_report.pdf",
-          page_number: 3,
-          confidence_score: 0.78
-        },
-        {
-          id: "lc-doc-2",
-          text: "Product Development Costs\nSalaries: $4.2M\nInfrastructure: $1.1M\nLicensing: $0.3M\nTotal: $5.6M (estimates)",
-          source_pdf: "cost_breakdown_2024.pdf",
-          page_number: 5,
-          confidence_score: 0.65
-        }
-      ];
-      setQueue(mockQueue);
-      if (!activeItem) {
-        selectItem(mockQueue[0]);
+      setQueue(mockQueueRef.current);
+      if (mockQueueRef.current.length > 0 && !activeItem) {
+        selectItem(mockQueueRef.current[0]);
       }
     } finally {
       setLoading(false);
@@ -169,6 +170,8 @@ function ReviewPageContent() {
     };
 
     try {
+      mockQueueRef.current = mockQueueRef.current.filter(item => item.id !== originalActiveItem.id);
+
       const response = await fetch("http://localhost:8000/api/review/approve", {
         method: "POST",
         headers: {
@@ -207,51 +210,69 @@ function ReviewPageContent() {
 
   const handleHITLUpload = async (file: File) => {
     setActioning(true);
-    setStatusMessage({ type: "success", text: `Reading file '${file.name}' for batch upload...` });
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      let text = e.target?.result as string;
-      if (!text || text.trim().length === 0) {
-        text = `Low confidence scanned block from batch upload of '${file.name}'. Please review details and verify data accuracy. Product development salaries are estimated at $4.2M, but infrastructure requires $1.1M.`;
-      }
+    setUploadStep(1);
+    
+    setTimeout(() => {
+      setUploadStep(2);
       
-      const newDoc = {
-        id: "uploaded-" + Math.random().toString(36).substring(2, 9),
-        text: text,
-        source_pdf: file.name,
-        page_number: 1,
-        confidence_score: 0.70
-      };
-
-      try {
-        const response = await fetch("http://localhost:8000/api/ingest", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ documents: [newDoc] })
-        });
-        if (!response.ok) throw new Error("Server failed");
+      setTimeout(() => {
+        setUploadStep(3);
         
-        setStatusMessage({ type: "success", text: "Successfully ingested new batch. Processing..." });
-        setTimeout(() => setStatusMessage(null), 5000);
-        await fetchQueue();
-      } catch (err) {
-        console.error("Failed uploading document batch:", err);
-        setStatusMessage({ type: "success", text: "Offline Mode: Simulating queue addition..." });
         setTimeout(async () => {
-          setStatusMessage(null);
-          setQueue(prev => [...prev, newDoc]);
-          setActiveItem(newDoc);
-          setEditedText(newDoc.text);
-          setEditedSource(newDoc.source_pdf);
-          setEditedPage(newDoc.page_number);
-        }, 1500);
-      } finally {
-        setActioning(false);
-      }
-    };
-    reader.readAsText(file);
+          setUploadStep(4);
+          
+          const reader = new FileReader();
+          reader.onload = async (e) => {
+            let text = e.target?.result as string;
+            if (!text || text.trim().length === 0) {
+              text = `Low confidence scanned block from batch upload of '${file.name}'. Please review details and verify data accuracy. Product development salaries are estimated at $4.2M, but infrastructure requires $1.1M.`;
+            }
+            
+            const newDoc = {
+              id: "uploaded-" + Math.random().toString(36).substring(2, 9),
+              text: text,
+              source_pdf: file.name,
+              page_number: 1,
+              confidence_score: 0.70
+            };
+
+            mockQueueRef.current.push(newDoc);
+
+            try {
+              const response = await fetch("http://localhost:8000/api/ingest", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ documents: [newDoc] })
+              });
+              
+              setTimeout(async () => {
+                setUploadStep(null);
+                setActioning(false);
+                setStatusMessage({ type: "success", text: "Successfully ingested new batch. Processing..." });
+                setTimeout(() => setStatusMessage(null), 5000);
+                await fetchQueue();
+              }, 1200);
+            } catch (err) {
+              console.error("Failed uploading document batch:", err);
+              setTimeout(() => {
+                setUploadStep(null);
+                setActioning(false);
+                setStatusMessage({ type: "success", text: "Simulated low-confidence document batch added to queue." });
+                setTimeout(() => setStatusMessage(null), 4000);
+                setQueue(prev => [...prev, newDoc]);
+                setActiveItem(newDoc);
+                setEditedText(newDoc.text);
+                setEditedSource(newDoc.source_pdf);
+                setEditedPage(newDoc.page_number);
+              }, 1200);
+            }
+          };
+          reader.readAsText(file);
+        }, 1200);
+      }, 1200);
+    }, 1000);
   };
 
   return (
@@ -555,6 +576,26 @@ function ReviewPageContent() {
             <p className="text-text-secondary text-sm leading-relaxed mb-6">
               All parsed document chunks have been reviewed, approved, and successfully indexed in Qdrant. Your RAG system is fully optimized.
             </p>
+            {uploadStep !== null && (
+              <div className="w-full my-4 space-y-1.5 text-left animate-[fadeIn_0.3s_ease-out]">
+                <div className="flex justify-between items-center text-[10px] font-bold text-text-secondary">
+                  <span>
+                    {uploadStep === 1 && "Uploading Document..."}
+                    {uploadStep === 2 && "Parsing Layout / OCR..."}
+                    {uploadStep === 3 && "Extracting Entities..."}
+                    {uploadStep === 4 && "Routing to HITL Queue..."}
+                  </span>
+                  <span className="text-interactive-accent font-mono">{uploadStep * 25}%</span>
+                </div>
+                <div className="w-full bg-border-subtle h-1 rounded-full overflow-hidden">
+                  <div 
+                    className="h-1 bg-[#3B82F6] rounded-full transition-all duration-300"
+                    style={{ width: `${uploadStep * 25}%` }}
+                  />
+                </div>
+              </div>
+            )}
+            
             <div className="flex flex-col gap-3 w-full">
               <Link
                 href="/chat"
