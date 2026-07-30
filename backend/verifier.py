@@ -121,87 +121,101 @@ def heuristic_entailment_check(premise: str, hypothesis: str) -> bool:
     # If 70% of non-stopwords in the hypothesis are present in the premise, we assume entailment
     return overlap_ratio >= 0.70
 
+def heuristic_contradiction_check(premise: str, hypothesis: str) -> bool:
+    """
+    Checks if numbers in premise and hypothesis mismatch, representing a direct contradiction.
+    """
+    h_numbers = re.findall(r'\b\d+(?:\.\d+)?\b', hypothesis)
+    p_numbers = re.findall(r'\b\d+(?:\.\d+)?\b', premise)
+    for num in h_numbers:
+        if num not in p_numbers:
+            return True # Direct contradiction due to mismatched quantitative claim
+    return False
+
 def verify_citations(llm_response: str, context_docs: list[dict], nli_required: bool = True) -> str:
     """
     Parses LLM response, extracts sentences with citations like [Doc X],
     verifies them against the corresponding source chunk in context_docs.
-    Appends [⚠️ Citation Unverified] if the claim is not supported.
+    Appends [⚠️ Citation Unverified] or [🚨 Direct Contradiction] accordingly.
     """
     if not llm_response:
         return llm_response
         
-    # Split text into sentences using simple regex
     sentences = re.split(r'(?<=[.!?])\s+', llm_response)
     verified_sentences = []
     
     nli = get_nli_pipeline() if nli_required else None
     
     for sentence in sentences:
-        # Find all citations in this sentence like [Doc 1], [Doc 2], etc.
         citations = re.findall(r'\[Doc\s+(\d+)\]', sentence)
         
         if not citations:
             verified_sentences.append(sentence)
             continue
             
-        # Strip citation tokens to get the clean claim
         clean_claim = re.sub(r'\[Doc\s+\d+\]', '', sentence).strip()
-        
-        # Track which citations fail verification
-        failed_citations = []
+        failed_citations = [] # List of tuples: (cit_str, status_type)
         
         for cit_str in citations:
-            doc_idx = int(cit_str) - 1 # 1-based indexing for documents
+            doc_idx = int(cit_str) - 1
             
             if doc_idx < 0 or doc_idx >= len(context_docs):
-                # Out of bounds doc index -> unverified
-                failed_citations.append(cit_str)
+                failed_citations.append((cit_str, "unverified"))
                 continue
                 
             doc = context_docs[doc_idx]
-            # Handle list of dict or Qdrant points depending on format
             if isinstance(doc, dict):
                 premise = doc.get("payload", {}).get("text", doc.get("text", ""))
             else:
-                # Qdrant Hit or Point
                 premise = getattr(doc, "payload", {}).get("text", "")
                 
-            # Perform verification
             is_entailed = False
+            is_contradiction = False
+            
             if nli is not None:
                 try:
-                    # nli-deberta-v3-base outputs label 'entailment', 'neutral', or 'contradiction'
                     res = nli({"text": premise, "text_pair": clean_claim})
                     if isinstance(res, list):
                         res = res[0]
-                    # Let's check label. If the model outputs standard class labels:
                     label = res['label'].lower()
                     score = res['score']
                     
                     threshold = load_nli_threshold()
                     if label == 'entailment' and score >= threshold:
                         is_entailed = True
-                    elif 'label_0' in label or 'label_1' in label or 'label_2' in label:
-                        # Some versions output LABEL_0, LABEL_1, etc.
-                        # Usually: Label 0 = entailment, Label 1 = neutral, Label 2 = contradiction
-                        # If label is LABEL_0 (entailment) and score >= threshold
-                        if '0' in label and score >= threshold:
+                    elif 'label_0' in label or '0' in label:
+                        if score >= threshold:
                             is_entailed = True
+                            
+                    # Contradiction classification
+                    if not is_entailed:
+                        if label == 'contradiction' and score >= 0.55:
+                            is_contradiction = True
+                        elif 'label_2' in label or '2' in label:
+                            if score >= 0.55:
+                                is_contradiction = True
                 except Exception as e:
                     print(f"NLI model inference error: {e}. Falling back to heuristic.")
                     is_entailed = heuristic_entailment_check(premise, clean_claim)
+                    if not is_entailed:
+                        is_contradiction = heuristic_contradiction_check(premise, clean_claim)
             else:
                 is_entailed = heuristic_entailment_check(premise, clean_claim)
-                
+                if not is_entailed:
+                    is_contradiction = heuristic_contradiction_check(premise, clean_claim)
+                    
             if not is_entailed:
-                failed_citations.append(cit_str)
+                status_type = "contradiction" if is_contradiction else "unverified"
+                failed_citations.append((cit_str, status_type))
                 
-        # Modify sentence: insert warning marker after failed citations
+        # Tag failed citations
         mod_sentence = sentence
-        for failed in set(failed_citations):
-            # Replace [Doc X] with [Doc X][⚠️ Citation Unverified]
+        for failed, status in set(failed_citations):
             target = f"[Doc {failed}]"
-            replacement = f"{target}[⚠️ Citation Unverified]"
+            if status == "contradiction":
+                replacement = f"{target}[🚨 Direct Contradiction]"
+            else:
+                replacement = f"{target}[⚠️ Citation Unverified]"
             mod_sentence = mod_sentence.replace(target, replacement)
             
         verified_sentences.append(mod_sentence)
