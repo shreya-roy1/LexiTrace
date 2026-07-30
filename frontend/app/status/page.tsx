@@ -65,6 +65,24 @@ function StatusPageContent() {
     document.documentElement.classList.remove(theme);
   };
 
+  const syncSettingsToBackend = async (model: string, nli: boolean) => {
+    try {
+      await fetch("http://localhost:8000/api/settings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          reranker_model: model,
+          nli_required: nli,
+          llm_model: localStorage.getItem("rag_model") || "gpt-4o"
+        }),
+      });
+    } catch (e) {
+      console.error("Failed to sync settings to backend:", e);
+    }
+  };
+
   return (
     <div className="flex h-screen bg-bg-canvas text-text-primary overflow-hidden font-sans">
       
@@ -266,7 +284,12 @@ function StatusPageContent() {
                 <h4 className="text-xs font-bold text-text-secondary uppercase tracking-wider">Reranker Model</h4>
                 <select 
                   value={activeModel} 
-                  onChange={(e) => { setActiveModel(e.target.value); localStorage.setItem("rag_reranker", e.target.value); }}
+                  onChange={(e) => { 
+                    const val = e.target.value;
+                    setActiveModel(val); 
+                    localStorage.setItem("rag_reranker", val); 
+                    syncSettingsToBackend(val, nliRequired);
+                  }}
                   className="w-full bg-bg-sidebar border border-border-subtle rounded-lg px-2 py-1 text-xs text-text-primary outline-none focus:border-interactive-accent"
                 >
                   <option value="bge-reranker-large">BGE-Reranker-Large</option>
@@ -296,7 +319,12 @@ function StatusPageContent() {
                   <p className="text-[10px] text-text-secondary mt-0.5">Require entailment check</p>
                 </div>
                 <button 
-                  onClick={() => { const val = !nliRequired; setNliRequired(val); localStorage.setItem("rag_nli", String(val)); }}
+                  onClick={() => { 
+                    const val = !nliRequired; 
+                    setNliRequired(val); 
+                    localStorage.setItem("rag_nli", String(val)); 
+                    syncSettingsToBackend(activeModel, val);
+                  }}
                   className={`w-8 h-4 rounded-full p-0.5 transition-colors cursor-pointer ${nliRequired ? 'bg-interactive-accent' : 'bg-border-subtle'}`}
                 >
                   <div className={`w-3 h-3 rounded-full bg-bg-surface transition-transform ${nliRequired ? 'translate-x-4' : 'translate-x-0'}`} />
