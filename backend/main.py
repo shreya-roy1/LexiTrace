@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from backend.agent import run_rag_agent
 from backend.vector_store import init_vector_store, upsert_documents
 from backend.cache import semantic_cache
+from backend.config_state import backend_settings
 
 app = FastAPI(title="LexiTrace Backend Engine", version="1.0.0")
 
@@ -48,6 +49,11 @@ class ApproveRequest(BaseModel):
     source_pdf: str
     page_number: int
     confidence_score: float
+
+class SettingsModel(BaseModel):
+    reranker_model: str
+    nli_required: bool
+    llm_model: Optional[str] = "gpt-4o"
 
 # Event log to track sequence IDs for resilient reconnects
 ws_events_log = []
@@ -449,6 +455,18 @@ async def websocket_endpoint(websocket: WebSocket, last_event_id: Optional[int] 
     except Exception as e:
         print(f"WebSocket client error: {e}")
         manager.disconnect(websocket)
+
+@app.post("/api/settings")
+def update_settings(settings: SettingsModel):
+    backend_settings["reranker_model"] = settings.reranker_model
+    backend_settings["nli_required"] = settings.nli_required
+    backend_settings["llm_model"] = settings.llm_model or "gpt-4o"
+    print(f"Backend settings updated dynamically: {backend_settings}")
+    return {"status": "success", "settings": backend_settings}
+
+@app.get("/api/settings")
+def get_settings():
+    return backend_settings
 
 if __name__ == "__main__":
     import uvicorn
