@@ -130,8 +130,9 @@ def upsert_documents(documents: list[dict]):
         return
         
     init_vector_store()
+    from backend.security import mask_pii
     
-    texts = [doc["text"] for doc in documents]
+    texts = [mask_pii(doc["text"]) for doc in documents]
     dense_vecs = get_dense_embeddings(texts)
     
     points = []
@@ -152,14 +153,15 @@ def upsert_documents(documents: list[dict]):
                 # Convert arbitrary string to deterministic UUID
                 doc_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, str(raw_id)))
                 
-        text = doc["text"]
+        text = mask_pii(doc["text"])
         
-        # Format payload
+        # Format payload with ACL roles
         payload = {
             "text": text,
             "source_pdf": doc.get("source_pdf", "unknown"),
             "page_number": int(doc.get("page_number", 0)),
-            "confidence_score": float(doc.get("confidence_score", 1.0))
+            "confidence_score": float(doc.get("confidence_score", 1.0)),
+            "allowed_roles": doc.get("allowed_roles", ["finance_admin", "user"])
         }
         
         # Generate sparse vector
