@@ -432,6 +432,62 @@ function ChatPageContent() {
     }
   };
 
+  const handleHighlightExport = () => {
+    if (!selectedDoc) return;
+    const docText = selectedDoc.payload?.text ?? selectedDoc.text;
+    const sourcePdf = selectedDoc.payload?.source_pdf ?? (selectedDoc as any).source_pdf ?? "document.pdf";
+    const pageNum = selectedDoc.payload?.page_number ?? (selectedDoc as any).page_number ?? 1;
+    const confidence = Math.round((selectedDoc.payload?.confidence_score ?? (selectedDoc as any).confidence_score ?? 1.0) * 100);
+    
+    const printContent = `
+      <html>
+        <head>
+          <title>Annotated Scan - ${sourcePdf} (Page ${pageNum})</title>
+          <style>
+            body { font-family: monospace; padding: 40px; color: #1e293b; background-color: #f8fafc; }
+            .page-border { border: 2px solid #cbd5e1; padding: 40px; background: white; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); border-radius: 8px; }
+            .header { border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 24px; display: flex; justify-content: space-between; }
+            .highlight-box { border-left: 4px solid #10b981; background: #ecfdf5; padding: 20px; border-radius: 4px; margin: 20px 0; }
+            .footer { margin-top: 40px; font-size: 10px; color: #94a3b8; text-align: center; }
+          </style>
+        </head>
+        <body>
+          <div class="page-border">
+            <div class="header">
+              <div>
+                <strong>LEXITRACE ANNOTATED DOCUMENT AUDIT</strong><br/>
+                File: ${sourcePdf}
+              </div>
+              <div style="text-align: right;">
+                PAGE: ${pageNum}<br/>
+                CONFIDENCE: ${confidence}%
+              </div>
+            </div>
+            <p style="color: #94a3b8; font-size: 12px;">[PAGE LAYOUT SCAN CHUNKS]</p>
+            <div class="highlight-box">
+              <strong>VERIFIED RETRIEVAL ANNOTATION CHUNK:</strong><br/>
+              <p style="font-size: 14px; line-height: 1.6;">${docText}</p>
+            </div>
+            <p style="color: #94a3b8; font-size: 12px;">[PAGE FOOTER METRICS]</p>
+            <div class="footer">
+              This is a certified RAG citation annotation generated dynamically by the LexiTrace Trust Layer.
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+    
+    const printWindow = window.open("", "_blank");
+    if (printWindow) {
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => {
+        printWindow.print();
+      }, 250);
+    }
+  };
+
   const renderMessageContent = (msg: Message) => {
     const text = msg.text;
     if (msg.role === "user") {
@@ -439,7 +495,7 @@ function ChatPageContent() {
     }
 
     const parts = [];
-    const customRegex = /(\[Doc\s+(\d+)\](?:\[⚠️\s*Citation\s*Unverified\])?)/g;
+    const customRegex = /(\[Doc\s+(\d+)\](?:\[(?:⚠️\s*Citation\s*Unverified|🚨\s*Direct\s*Contradiction)\])?)/g;
     let lastIndex = 0;
     let match;
 
@@ -454,6 +510,7 @@ function ChatPageContent() {
 
       const fullTag = match[1];
       const docNum = parseInt(match[2]);
+      const isContradiction = fullTag.includes("🚨") || fullTag.includes("Contradiction");
       const isUnverified = fullTag.includes("⚠️") || fullTag.includes("Unverified");
 
       parts.push(
@@ -461,13 +518,16 @@ function ChatPageContent() {
           key={`c-${match.index}`}
           onClick={() => handleCitationClick(docNum, msg.documents)}
           className={`inline-flex items-center gap-1 px-2.5 py-0.5 mx-1 rounded-full text-xs font-semibold select-none cursor-pointer transition-all duration-300 border animate-[fadeIn_0.3s_ease-out] ${
-            isUnverified
+            isContradiction
+              ? "bg-critical-bg text-critical-text border-critical-text/25 hover:opacity-90 animate-pulse"
+              : isUnverified
               ? "bg-warning-bg text-warning-text border-warning-text/25 hover:opacity-90 animate-pulse"
               : "bg-citation-std-bg text-citation-std-text border-transparent hover:opacity-90"
           }`}
         >
           <span>Doc {docNum}</span>
-          {isUnverified && <AlertTriangle className="w-3 h-3 shrink-0 text-warning-text" />}
+          {isContradiction && <ShieldAlert className="w-3 h-3 shrink-0 text-critical-text" />}
+          {!isContradiction && isUnverified && <AlertTriangle className="w-3 h-3 shrink-0 text-warning-text" />}
         </button>
       );
 
@@ -1148,9 +1208,17 @@ function ChatPageContent() {
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <label className="text-[10px] text-text-secondary font-bold uppercase tracking-wider">Scanned Document Bounding Preview</label>
-                  <span className="text-[9px] font-mono text-emerald-500 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                    NLI Entailment: {Math.round(selectedDoc.score * 100)}% Verified
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleHighlightExport}
+                      className="text-[9px] font-bold text-interactive-accent bg-interactive-accent/10 px-2 py-0.5 rounded-full border border-interactive-accent/25 hover:bg-interactive-accent hover:text-white transition-all cursor-pointer shadow-3xs"
+                    >
+                      Highlight & Export PDF
+                    </button>
+                    <span className="text-[9px] font-mono text-emerald-500 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                      NLI Entailment: {Math.round(selectedDoc.score * 100)}% Verified
+                    </span>
+                  </div>
                 </div>
                 
                 <div className="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 text-slate-850 dark:text-slate-200 p-6 shadow-md rounded-xl relative font-sans min-h-[220px] flex flex-col justify-between paper-shadow select-none">
