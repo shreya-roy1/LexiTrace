@@ -18,7 +18,8 @@ import {
   Sun,
   Moon,
   Activity,
-  Settings
+  Settings,
+  Layers
 } from "lucide-react";
 import { SettingsModal } from "../../components/SettingsModal";
 import dynamic from "next/dynamic";
@@ -295,16 +296,20 @@ function ReviewPageContent() {
     <div className="flex h-screen bg-bg-canvas text-text-primary overflow-hidden font-sans">
       
       {/* Sidebar Navigation */}
-      <aside className="w-64 bg-bg-sidebar border-r border-border-subtle flex flex-col justify-between shrink-0 hidden md:flex">
-        <div className="flex flex-col">
-          {/* Logo - Minimal Typography Design */}
-          <div className="p-6 border-b border-border-subtle">
-            <h1 className="font-extrabold text-xl tracking-wider text-text-primary">LexiTrace</h1>
-            <span className="text-[9px] text-text-secondary font-bold uppercase tracking-widest block mt-0.5">Enterprise RAG</span>
+      <aside className="w-64 bg-bg-sidebar/95 border-r border-border-subtle flex flex-col backdrop-blur-md z-20 shrink-0">
+        {/* Brand Header */}
+        <div className="h-16 flex items-center px-6 border-b border-border-subtle">
+          <div className="flex items-center gap-2.5">
+            <span className="p-1.5 rounded-lg bg-interactive-accent text-bg-sidebar">
+              <Layers className="w-4 h-4 shrink-0 text-[#38BDF8]" />
+            </span>
+            <span className="font-extrabold text-sm tracking-widest text-text-primary uppercase">LexiTrace</span>
           </div>
-          
-          {/* Nav menu */}
-          <nav className="p-4 space-y-1">
+        </div>
+
+        {/* Sidebar Nav Links */}
+        <div className="flex-1 overflow-y-auto py-4 px-3 custom-scrollbar">
+          <nav className="space-y-1">
             <Link 
               href="/chat" 
               className="flex items-center gap-3 px-4 py-3 border-l-2 border-transparent text-text-secondary hover:bg-bg-surface hover:text-text-primary transition-all rounded-r-md font-medium"
@@ -314,10 +319,17 @@ function ReviewPageContent() {
             </Link>
             <Link 
               href="/review" 
-              className="flex items-center gap-3 px-4 py-3 border-l-2 border-interactive-accent bg-bg-surface text-text-primary font-bold transition-all rounded-r-md"
+              className="flex items-center justify-between px-4 py-3 border-l-2 border-interactive-accent bg-bg-surface text-text-primary font-bold transition-all rounded-r-md"
             >
-              <LayoutDashboard className="w-5 h-5 text-interactive-accent" />
-              <span>HITL Review Queue</span>
+              <span className="flex items-center gap-3">
+                <LayoutDashboard className="w-5 h-5 text-interactive-accent" />
+                <span>HITL Review Queue</span>
+              </span>
+              {queue.length > 0 && (
+                <span className="px-2 py-0.5 rounded-full bg-critical-bg text-critical-text text-[10px] font-bold shadow-xs">
+                  {queue.length}
+                </span>
+              )}
             </Link>
             <Link 
               href="/status" 
@@ -336,19 +348,9 @@ function ReviewPageContent() {
           </nav>
         </div>
 
-        {/* Sidebar Footer with Theme Toggle */}
+        {/* Sidebar Footer with Settings and Actions */}
         {mounted && (
-          <div className="p-4 border-t border-border-subtle space-y-4">
-            
-            <div className="bg-bg-surface p-3 rounded-xl border border-border-subtle shadow-inner">
-              <h4 className="text-[10px] text-text-secondary font-bold uppercase tracking-wide">Queue Status</h4>
-              <div className="flex items-baseline gap-2 mt-1.5">
-                <span className="text-2xl font-extrabold text-text-primary">{queue.length}</span>
-                <span className="text-[10px] text-text-secondary">items pending</span>
-              </div>
-
-            </div>
-
+          <div className="p-4 border-t border-border-subtle space-y-2">
             <button 
               onClick={toggleTheme}
               className="w-full flex items-center justify-between px-4 py-2.5 rounded-lg border border-border-subtle bg-bg-surface hover:bg-bg-sidebar text-xs text-text-primary font-bold transition-all cursor-pointer shadow-sm"
@@ -370,7 +372,7 @@ function ReviewPageContent() {
               </span>
               <span className="text-[10px] text-text-secondary font-mono">CFG</span>
             </button>
-
+            
             <button 
               onClick={fetchQueue}
               className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-bg-surface hover:bg-bg-sidebar border border-border-subtle text-xs text-text-primary font-semibold cursor-pointer transition-all shadow-sm"
