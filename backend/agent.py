@@ -6,7 +6,12 @@ from backend.retrieval import hybrid_search_and_rerank
 from backend.verifier import verify_citations
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-is_valid_openai = OPENAI_API_KEY and not OPENAI_API_KEY.startswith("your-")
+from backend.config_state import backend_settings
+
+def check_openai_enabled() -> bool:
+    is_valid_key = OPENAI_API_KEY and not OPENAI_API_KEY.startswith("your-")
+    is_mock = backend_settings.get("llm_model", "gpt-4o") == "mock-fallback"
+    return is_valid_key and not is_mock
 
 # Define Agent State
 class AgentState(TypedDict):
@@ -42,7 +47,7 @@ def grade_documents_node(state: AgentState) -> dict:
         print(f"First-pass retrieval score is high ({highest_score} >= 0.88). Bypassing rewrite loop.")
         return {"is_sufficient": True, "loop_count": loop_count}
         
-    if is_valid_openai:
+    if check_openai_enabled():
         try:
             from langchain_openai import ChatOpenAI
             from langchain_core.messages import SystemMessage, HumanMessage
@@ -87,7 +92,7 @@ def rewrite_query_node(state: AgentState) -> dict:
     loop_count = state.get("loop_count", 0) + 1
     print(f"--- REWRITE QUERY NODE: improving query '{query}' (attempt {loop_count}) ---")
     
-    if is_valid_openai:
+    if check_openai_enabled():
         try:
             from langchain_openai import ChatOpenAI
             from langchain_core.messages import SystemMessage, HumanMessage
@@ -120,7 +125,7 @@ def generate_node(state: AgentState) -> dict:
     documents = state["documents"]
     print("--- GENERATION NODE: producing response ---")
     
-    if is_valid_openai:
+    if check_openai_enabled():
         try:
             from langchain_openai import ChatOpenAI
             from langchain_core.messages import SystemMessage, HumanMessage
