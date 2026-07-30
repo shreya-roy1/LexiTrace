@@ -19,7 +19,8 @@ import {
   Moon,
   Activity,
   Settings,
-  Layers
+  Layers,
+  Menu
 } from "lucide-react";
 import { SettingsModal } from "../../components/SettingsModal";
 import dynamic from "next/dynamic";
@@ -312,7 +313,11 @@ function ReviewPageContent() {
     <div className="flex h-screen bg-bg-canvas text-text-primary overflow-hidden font-sans">
       
       {/* Sidebar Navigation */}
-      <aside className="w-64 bg-bg-sidebar/95 border-r border-border-subtle flex flex-col backdrop-blur-md z-20 shrink-0">
+      <aside 
+        className={`bg-bg-sidebar/95 border-r border-border-subtle flex flex-col backdrop-blur-md z-20 shrink-0 transition-all duration-300 ease-in-out ${
+          sidebarOpen ? "w-64 opacity-100" : "w-0 opacity-0 overflow-hidden border-r-0 pointer-events-none"
+        }`}
+      >
         {/* Brand Header */}
         <div className="h-16 flex items-center px-6 border-b border-border-subtle shrink-0">
           <div className="flex items-center gap-3">
@@ -410,8 +415,19 @@ function ReviewPageContent() {
         
         {/* Top Header */}
         <header className="h-16 bg-bg-sidebar/90 border-b border-border-subtle flex items-center justify-between px-6 backdrop-blur-md z-10 shrink-0">
-          <div className="flex items-center gap-3 md:hidden">
-            <span className="font-extrabold tracking-wider text-text-primary">LexiTrace</span>
+          <div className="flex items-center gap-3">
+            {/* Sidebar Collapse Toggle Button */}
+            <button 
+              onClick={toggleSidebar}
+              className="p-2 rounded-lg border border-border-subtle bg-bg-surface hover:bg-bg-sidebar text-text-secondary hover:text-text-primary transition-all cursor-pointer shadow-2xs hidden md:flex items-center justify-center shrink-0"
+              title={sidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"}
+            >
+              <Menu className="w-4.5 h-4.5" />
+            </button>
+
+            <div className="flex items-center gap-3 md:hidden">
+              <span className="font-extrabold tracking-wider text-text-primary">LexiTrace</span>
+            </div>
           </div>
           <h2 className="hidden md:block font-bold text-text-primary text-base tracking-wide">Human-In-The-Loop Validation Workstation</h2>
           <div className="flex gap-2">
