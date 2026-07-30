@@ -72,11 +72,41 @@ function ReviewPageContent() {
     }
   ]);
   
-  // Theme and Sidebar collapse states
+  // Theme and Sidebar collapse/resize states
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarWidth, setSidebarWidth] = useState(256);
+  const [isResizing, setIsResizing] = useState(false);
+
+  const startResizing = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  };
+
+  // Mouse drag handler for resizable sidebar
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return;
+      const newWidth = Math.max(180, Math.min(450, e.clientX));
+      setSidebarWidth(newWidth);
+      localStorage.setItem("sidebar_width", String(newWidth));
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    if (isResizing) {
+      window.addEventListener("mousemove", handleMouseMove);
+      window.addEventListener("mouseup", handleMouseUp);
+    }
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isResizing]);
 
   const fetchQueue = async () => {
     setLoading(true);
@@ -112,6 +142,12 @@ function ReviewPageContent() {
     const savedSidebar = localStorage.getItem("sidebar_open");
     if (savedSidebar === "false") {
       setSidebarOpen(false);
+    }
+
+    // Retrieve sidebar width preference
+    const savedWidth = localStorage.getItem("sidebar_width");
+    if (savedWidth) {
+      setSidebarWidth(parseInt(savedWidth));
     }
     
     // Theme sync
@@ -314,9 +350,12 @@ function ReviewPageContent() {
       
       {/* Sidebar Navigation */}
       <aside 
-        className={`bg-bg-sidebar/95 border-r border-border-subtle flex flex-col backdrop-blur-md z-20 shrink-0 transition-all duration-300 ease-in-out ${
-          sidebarOpen ? "w-64 opacity-100" : "w-0 opacity-0 overflow-hidden border-r-0 pointer-events-none"
+        className={`bg-bg-sidebar/95 border-r border-border-subtle flex flex-col backdrop-blur-md z-20 relative shrink-0 ${
+          isResizing ? "" : "transition-all duration-300 ease-in-out"
+        } ${
+          sidebarOpen ? "opacity-100" : "opacity-0 overflow-hidden border-r-0 pointer-events-none"
         }`}
+        style={{ width: sidebarOpen ? `${sidebarWidth}px` : '0px' }}
       >
         {/* Brand Header */}
         <div className="h-16 flex items-center px-6 border-b border-border-subtle shrink-0">
@@ -407,6 +446,16 @@ function ReviewPageContent() {
               Refresh Queue
             </button>
           </div>
+        )}
+
+        {/* Resize Handle */}
+        {sidebarOpen && (
+          <div 
+            onMouseDown={startResizing}
+            className={`absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-interactive-accent/30 z-30 transition-all ${
+              isResizing ? "bg-interactive-accent/50 w-1.5" : "bg-transparent"
+            }`}
+          />
         )}
       </aside>
 
