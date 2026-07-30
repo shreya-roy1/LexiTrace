@@ -46,6 +46,13 @@ function ReviewPageContent() {
   const [statusMessage, setStatusMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [uploadStep, setUploadStep] = useState<number | null>(null);
 
+  const [historyLogs, setHistoryLogs] = useState([
+    { source_pdf: "q3_financial_report.pdf", page_number: 3, date: "Today, 14:32" },
+    { source_pdf: "cost_breakdown_2024.pdf", page_number: 5, date: "Today, 11:15" },
+    { source_pdf: "compliance_charter_v2.pdf", page_number: 12, date: "Yesterday, 17:40" },
+    { source_pdf: "ops_playbook_draft.docx", page_number: 1, date: "Yesterday, 09:12" },
+  ]);
+
   const mockQueueRef = useRef<IngestDocument[]>([
     {
       id: "lc-doc-1",
@@ -183,6 +190,15 @@ function ReviewPageContent() {
       if (!response.ok) {
         throw new Error("Ingestion node returned an error status.");
       }
+
+      setHistoryLogs(prev => [
+        {
+          source_pdf: originalSource,
+          page_number: Number(originalPage),
+          date: `Today, ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+        },
+        ...prev
+      ]);
 
       setStatusMessage({ 
         type: "success", 
@@ -557,77 +573,132 @@ function ReviewPageContent() {
 
           </div>
         ) : (
-          /* Queue Cleared Success Page */
-          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center max-w-md mx-auto">
-            {statusMessage && (
-              <div className={`p-4 rounded-xl border flex gap-3 text-xs leading-relaxed mb-6 w-full text-left ${
-                statusMessage.type === "success" 
-                  ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500 font-medium" 
-                  : "bg-critical-bg border-critical-text/20 text-critical-text font-medium"
-              }`}>
-                <CheckCircle className="w-5 h-5 shrink-0 text-emerald-500" />
-                <div>{statusMessage.text}</div>
-              </div>
-            )}
-            <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 flex items-center justify-center mb-6 shadow-md shadow-emerald-500/5">
-              <ClipboardCheck className="w-8 h-8" />
-            </div>
-            <h3 className="text-xl font-bold text-text-primary mb-2">HITL Queue Cleared!</h3>
-            <p className="text-text-secondary text-sm leading-relaxed mb-6">
-              All parsed document chunks have been reviewed, approved, and successfully indexed in Qdrant. Your RAG system is fully optimized.
-            </p>
-            {uploadStep !== null && (
-              <div className="w-full my-4 space-y-1.5 text-left animate-[fadeIn_0.3s_ease-out]">
-                <div className="flex justify-between items-center text-[10px] font-bold text-text-secondary">
-                  <span>
-                    {uploadStep === 1 && "Uploading Document..."}
-                    {uploadStep === 2 && "Parsing Layout / OCR..."}
-                    {uploadStep === 3 && "Extracting Entities..."}
-                    {uploadStep === 4 && "Routing to HITL Queue..."}
-                  </span>
-                  <span className="text-interactive-accent font-mono">{uploadStep * 25}%</span>
-                </div>
-                <div className="w-full bg-border-subtle h-1 rounded-full overflow-hidden">
-                  <div 
-                    className="h-1 bg-[#3B82F6] rounded-full transition-all duration-300"
-                    style={{ width: `${uploadStep * 25}%` }}
-                  />
-                </div>
-              </div>
-            )}
+          /* Dual Action Layout for Empty Queue */
+          <div className="flex-1 flex flex-col md:flex-row overflow-hidden h-full">
             
-            <div className="flex flex-col gap-3 w-full">
-              <Link
-                href="/chat"
-                className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-interactive-accent hover:opacity-90 text-bg-surface font-semibold text-sm transition-all shadow-md"
-              >
-                <span>Go to Chat Interface</span>
-                <ChevronRight className="w-4 h-4" />
-              </Link>
-              
-              <button
-                onClick={() => {
-                  const fileInput = document.getElementById("hitl-upload-input");
-                  if (fileInput) fileInput.click();
-                }}
-                className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl border border-border-subtle bg-bg-surface hover:bg-bg-sidebar text-text-primary font-semibold text-sm transition-all shadow-xs cursor-pointer"
-              >
-                <span>Upload New Batch for Parsing</span>
-              </button>
-              
-              <input 
-                id="hitl-upload-input" 
-                type="file" 
-                accept=".pdf,.txt,.docx" 
-                className="hidden" 
-                onChange={async (e) => {
-                  const files = e.target.files;
-                  if (files && files.length > 0) {
-                    await handleHITLUpload(files[0]);
-                  }
-                }}
-              />
+            {/* LEFT PANEL: Drag-and-drop Batch Ingestion */}
+            <div className="flex-1 p-8 flex flex-col justify-center border-b md:border-b-0 md:border-r border-border-subtle bg-bg-canvas/30 backdrop-blur-xs">
+              <div className="max-w-md mx-auto w-full text-center space-y-6">
+                <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 flex items-center justify-center mb-4 mx-auto shadow-md shadow-emerald-500/5">
+                  <ClipboardCheck className="w-8 h-8" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-text-primary">HITL Queue Cleared!</h3>
+                  <p className="text-text-secondary text-xs mt-1.5 leading-relaxed">
+                    All document chunks reviewed. Select or drag-and-drop a new document batch to parse and queue for verification.
+                  </p>
+                </div>
+
+                {/* Drag and Drop Box */}
+                <div 
+                  onClick={() => {
+                    const fileInput = document.getElementById("hitl-upload-input");
+                    if (fileInput) fileInput.click();
+                  }}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={async (e) => {
+                    e.preventDefault();
+                    const files = e.dataTransfer.files;
+                    if (files && files.length > 0) {
+                      await handleHITLUpload(files[0]);
+                    }
+                  }}
+                  className="border-2 border-dashed border-border-subtle hover:border-interactive-accent/50 rounded-2xl p-8 bg-bg-surface hover:bg-bg-sidebar/50 transition-all cursor-pointer flex flex-col items-center justify-center gap-3 select-none py-10"
+                >
+                  <span className="p-3 rounded-full bg-secondary-accent-bg text-secondary-accent-text text-sm">
+                    <FileText className="w-6 h-6 shrink-0" />
+                  </span>
+                  <div>
+                    <span className="text-xs font-bold text-text-primary block">Click to parse document</span>
+                    <span className="text-[10px] text-text-secondary mt-1 block">Supports PDF, DOCX, TXT (Max 25MB)</span>
+                  </div>
+                </div>
+
+                <input 
+                  id="hitl-upload-input" 
+                  type="file" 
+                  accept=".pdf,.txt,.docx" 
+                  className="hidden" 
+                  onChange={async (e) => {
+                    const files = e.target.files;
+                    if (files && files.length > 0) {
+                      await handleHITLUpload(files[0]);
+                    }
+                  }}
+                />
+
+                {uploadStep !== null && (
+                  <div className="w-full space-y-1.5 text-left animate-[fadeIn_0.3s_ease-out]">
+                    <div className="flex justify-between items-center text-[10px] font-bold text-text-secondary">
+                      <span>
+                        {uploadStep === 1 && "Uploading Document..."}
+                        {uploadStep === 2 && "Parsing Layout / OCR..."}
+                        {uploadStep === 3 && "Extracting Entities..."}
+                        {uploadStep === 4 && "Routing to HITL Queue..."}
+                      </span>
+                      <span className="text-interactive-accent font-mono">{uploadStep * 25}%</span>
+                    </div>
+                    <div className="w-full bg-border-subtle h-1 rounded-full overflow-hidden">
+                      <div 
+                        className="h-1 bg-emerald-500 rounded-full transition-all duration-300"
+                        style={{ width: `${uploadStep * 25}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
+
+            {/* RIGHT PANEL: History logs of validated documents */}
+            <div className="flex-1 p-8 flex flex-col overflow-y-auto bg-bg-sidebar/20 custom-scrollbar">
+              <div className="max-w-2xl mx-auto w-full space-y-6">
+                <div>
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-text-primary">Validation History Log</h3>
+                  <p className="text-[11px] text-text-secondary mt-0.5">Recently verified, corrected and ingested documents.</p>
+                </div>
+
+                <div className="border border-border-subtle rounded-2xl overflow-hidden bg-bg-surface shadow-xs">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-bg-sidebar border-b border-border-subtle text-[10px] uppercase font-bold text-text-secondary">
+                        <th className="py-3 px-4">Document</th>
+                        <th className="py-3 px-4">Page</th>
+                        <th className="py-3 px-4 text-center">Status</th>
+                        <th className="py-3 px-4 text-right">Date Verified</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border-subtle/50 text-xs text-text-primary">
+                      {historyLogs.map((log, idx) => (
+                        <tr key={idx} className="hover:bg-bg-sidebar/35 transition-colors">
+                          <td className="py-3.5 px-4 font-semibold text-text-primary flex items-center gap-2">
+                            <FileText className="w-4 h-4 text-text-secondary shrink-0" />
+                            <span className="truncate max-w-[200px]" title={log.source_pdf}>{log.source_pdf}</span>
+                          </td>
+                          <td className="py-3.5 px-4 font-mono text-text-secondary">Pg {log.page_number}</td>
+                          <td className="py-3.5 px-4 text-center">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-bold">
+                              Verified
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 text-right font-mono text-[10px] text-text-secondary">{log.date}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4">
+                  <Link
+                    href="/chat"
+                    className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-interactive-accent hover:opacity-90 text-bg-surface font-bold text-xs transition-all shadow-md"
+                  >
+                    <span>Proceed to chat workspace</span>
+                    <ChevronRight className="w-4.5 h-4.5" />
+                  </Link>
+                </div>
+              </div>
+            </div>
+
           </div>
         )}
 
