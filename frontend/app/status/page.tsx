@@ -18,7 +18,8 @@ import {
   Layers,
   ArrowRight,
   ExternalLink,
-  Settings
+  Settings,
+  Menu
 } from "lucide-react";
 import { SettingsModal } from "../../components/SettingsModal";
 import dynamic from "next/dynamic";
@@ -30,6 +31,7 @@ function StatusPageContent() {
   const [theme, setTheme] = useState<"light" | "dark">("dark");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   
   // Interactive Options
   const [activeModel, setActiveModel] = useState("bge-reranker-large");
@@ -87,6 +89,13 @@ function StatusPageContent() {
   // Sync theme and local options
   useEffect(() => {
     setMounted(true);
+    
+    // Retrieve sidebar collapse preference
+    const savedSidebar = localStorage.getItem("sidebar_open");
+    if (savedSidebar === "false") {
+      setSidebarOpen(false);
+    }
+
     const storedTheme = localStorage.getItem("theme");
     if (storedTheme === "light" || storedTheme === "dark") {
       setTheme(storedTheme);
@@ -118,6 +127,14 @@ function StatusPageContent() {
     document.documentElement.classList.remove(theme);
   };
 
+  const toggleSidebar = () => {
+    setSidebarOpen(prev => {
+      const next = !prev;
+      localStorage.setItem("sidebar_open", String(next));
+      return next;
+    });
+  };
+
   const syncSettingsToBackend = async (model: string, nli: boolean) => {
     try {
       const activeLLM = localStorage.getItem("rag_model") || "gpt-4o";
@@ -141,14 +158,23 @@ function StatusPageContent() {
     <div className={`flex h-screen bg-bg-canvas overflow-hidden ${theme}`}>
       
       {/* Sidebar Navigation */}
-      <aside className="w-64 bg-bg-sidebar/95 border-r border-border-subtle flex flex-col backdrop-blur-md z-20 shrink-0">
+      <aside 
+        className={`bg-bg-sidebar/95 border-r border-border-subtle flex flex-col backdrop-blur-md z-20 shrink-0 transition-all duration-300 ease-in-out ${
+          sidebarOpen ? "w-64 opacity-100" : "w-0 opacity-0 overflow-hidden border-r-0 pointer-events-none"
+        }`}
+      >
         {/* Brand Header */}
-        <div className="h-16 flex items-center px-6 border-b border-border-subtle">
-          <div className="flex items-center gap-2.5">
-            <span className="p-1.5 rounded-lg bg-interactive-accent text-bg-sidebar">
-              <Layers className="w-4 h-4 shrink-0 text-[#38BDF8]" />
-            </span>
-            <span className="font-extrabold text-sm tracking-widest text-text-primary uppercase">LexiTrace</span>
+        <div className="h-16 flex items-center px-6 border-b border-border-subtle shrink-0">
+          <div className="flex items-center gap-3">
+            {/* High-tech Glowing Icon */}
+            <div className="relative flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500/20 to-indigo-500/20 border border-cyan-500/35 shadow-[0_0_15px_rgba(56,189,248,0.25)] overflow-hidden">
+              <div className="absolute inset-0 bg-cyan-500/10 animate-pulse"></div>
+              <Layers className="w-4.5 h-4.5 text-[#38BDF8] shrink-0" />
+            </div>
+            <div>
+              <span className="font-extrabold text-sm tracking-widest text-text-primary uppercase block">LexiTrace</span>
+              <span className="text-[8px] text-text-secondary font-bold uppercase tracking-widest block -mt-0.5">Enterprise RAG</span>
+            </div>
           </div>
         </div>
         
@@ -232,8 +258,19 @@ function StatusPageContent() {
 
         {/* Top Header */}
         <header className="h-16 bg-bg-sidebar/90 border-b border-border-subtle flex items-center justify-between px-6 backdrop-blur-md z-10 shrink-0">
-          <div className="flex items-center gap-3 md:hidden">
-            <span className="font-extrabold tracking-wider text-text-primary">LexiTrace</span>
+          <div className="flex items-center gap-3">
+            {/* Sidebar Collapse Toggle Button */}
+            <button 
+              onClick={toggleSidebar}
+              className="p-2 rounded-lg border border-border-subtle bg-bg-surface hover:bg-bg-sidebar text-text-secondary hover:text-text-primary transition-all cursor-pointer shadow-2xs hidden md:flex items-center justify-center shrink-0"
+              title={sidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"}
+            >
+              <Menu className="w-4.5 h-4.5" />
+            </button>
+
+            <div className="flex items-center gap-3 md:hidden">
+              <span className="font-extrabold tracking-wider text-text-primary">LexiTrace</span>
+            </div>
           </div>
           <h2 className="hidden md:block font-bold text-text-primary text-base tracking-wide">System Health & Pipeline Configuration</h2>
           <div className="flex gap-2">
