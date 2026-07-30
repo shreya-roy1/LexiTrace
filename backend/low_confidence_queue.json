@@ -1,1 +1,9 @@
-[]
+[
+  {
+    "id": "doc_test_low_conf",
+    "text": "Low confidence report segment that should trigger HITL review due to OCR failure risk.",
+    "source_pdf": "q3_report_scanned.pdf",
+    "page_number": 5,
+    "confidence_score": 0.65
+  }
+]
