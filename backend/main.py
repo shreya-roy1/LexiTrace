@@ -501,14 +501,37 @@ async def websocket_endpoint(websocket: WebSocket, last_event_id: Optional[int] 
             except Exception:
                 pass
         
+        # Check Qdrant Connection
+        from backend.vector_store import QDRANT_URL
+        try:
+            from qdrant_client import QdrantClient
+            if QDRANT_URL.startswith("http"):
+                q_client = QdrantClient(url=QDRANT_URL, timeout=1.0)
+                q_client.get_collections()
+                qdrant_status = "Local Active"
+            else:
+                qdrant_status = "Disconnected"
+        except Exception:
+            qdrant_status = "Disconnected"
+            
+        # Check Redis/Celery queue depth
+        try:
+            import redis
+            r = redis.Redis(host="localhost", port=6379, db=0, socket_timeout=1.0)
+            queue_depth = r.llen("celery")
+            redis_status = "Active"
+        except Exception:
+            queue_depth = 0
+            redis_status = "Offline"
+
         initial_payload = {
             "event": "INIT",
             "pending_count": queue_count,
             "metrics": {
                 "fastapi": "Connected",
-                "qdrant": "Local Active",
-                "redis": "Active",
-                "queue_depth": 0
+                "qdrant": qdrant_status,
+                "redis": redis_status,
+                "queue_depth": queue_depth
             }
         }
         await websocket.send_text(json.dumps(initial_payload))
@@ -516,7 +539,13 @@ async def websocket_endpoint(websocket: WebSocket, last_event_id: Optional[int] 
         while True:
             # Simple ping-pong heartbeat
             data = await websocket.receive_text()
-            if data == "ping":
+            if data.startswith("ping:"):
+                try:
+                    ts = data.split(":")[1]
+                    await websocket.send_text(json.dumps({"event": "pong", "ts": ts}))
+                except Exception:
+                    await websocket.send_text(json.dumps({"event": "pong"}))
+            elif data == "ping":
                 await websocket.send_text(json.dumps({"event": "pong"}))
     except WebSocketDisconnect:
         manager.disconnect(websocket)
