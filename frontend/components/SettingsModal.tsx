@@ -58,7 +58,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs animate-[fadeIn_0.2s_ease-out]">
+    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs animate-[fadeIn_0.2s_ease-out] ${theme}`}>
       <div className="bg-bg-surface border border-border-subtle rounded-2xl w-full max-w-md p-6 shadow-2xl transition-all scale-100 flex flex-col gap-5 select-none text-text-primary">
         
         {/* Header */}
@@ -85,7 +85,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 onClick={() => { if (theme === "dark") toggleTheme(); }}
                 className={`flex items-center justify-center gap-2 p-3 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
                   theme === "light"
-                    ? "bg-interactive-accent text-bg-surface border-interactive-accent shadow-sm"
+                    ? "bg-[#3B82F6] text-white border-[#3B82F6] shadow-sm"
                     : "bg-bg-sidebar border-border-subtle hover:bg-bg-surface text-text-secondary"
                 }`}
               >
@@ -96,7 +96,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 onClick={() => { if (theme === "light") toggleTheme(); }}
                 className={`flex items-center justify-center gap-2 p-3 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
                   theme === "dark"
-                    ? "bg-interactive-accent text-bg-surface border-interactive-accent shadow-sm"
+                    ? "bg-[#3B82F6] text-white border-[#3B82F6] shadow-sm"
                     : "bg-bg-sidebar border-border-subtle hover:bg-bg-surface text-text-secondary"
                 }`}
               >
@@ -139,38 +139,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </button>
             </div>
           </div>
-
-          {/* Section: Development Metadata (No N branding) */}
-          <div className="space-y-2">
-            <label className="block text-[10px] text-text-secondary font-bold uppercase tracking-wider">Environment Context</label>
-            <div className="p-3 rounded-xl border border-border-subtle bg-bg-sidebar/30 space-y-2 text-xs font-mono">
-              <div className="flex justify-between items-center text-text-secondary">
-                <span className="flex items-center gap-1.5">
-                  <Layers className="w-3.5 h-3.5" /> Bundler
-                </span>
-                <span className="text-text-primary font-semibold">Webpack</span>
-              </div>
-              <div className="flex justify-between items-center text-text-secondary">
-                <span className="flex items-center gap-1.5">
-                  <Cpu className="w-3.5 h-3.5" /> Router
-                </span>
-                <span className="text-text-primary font-semibold">Next.js App Router</span>
-              </div>
-              <div className="flex justify-between items-center text-text-secondary">
-                <span className="flex items-center gap-1.5">
-                  <HardDrive className="w-3.5 h-3.5" /> Build Route
-                </span>
-                <span className="text-text-primary font-semibold">Static & Dynamic</span>
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* Footer */}
         <div className="flex justify-end pt-2 border-t border-border-subtle mt-1">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-xl bg-interactive-accent hover:opacity-90 text-bg-surface text-xs font-bold transition-all cursor-pointer shadow-sm"
+            className="px-4 py-2 rounded-xl bg-[#3B82F6] hover:bg-[#3B82F6]/90 text-white text-xs font-bold transition-all cursor-pointer shadow-sm"
           >
             Done
           </button>
