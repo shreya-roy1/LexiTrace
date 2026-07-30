@@ -55,7 +55,7 @@ def reciprocal_rank_fusion(dense_hits, sparse_hits, k=60):
     
     return [(doc_map[doc_id], score) for doc_id, score in sorted_docs]
 
-def hybrid_search_and_rerank(query: str, top_k: int = 5):
+def hybrid_search_and_rerank(query: str, top_k: int = 5, user_role: str = "finance_admin"):
     """
     Performs hybrid search on Qdrant, merges results via RRF, reranks via Cross-Encoder,
     and returns top_k documents.
@@ -70,11 +70,24 @@ def hybrid_search_and_rerank(query: str, top_k: int = 5):
         print(f"Collection {COLLECTION_NAME} does not exist. Returning empty results.")
         return []
         
+    # Build ACL search filter
+    query_filter = None
+    if user_role:
+        query_filter = models.Filter(
+            must=[
+                models.FieldCondition(
+                    key="allowed_roles",
+                    match=models.MatchValue(value=user_role)
+                )
+            ]
+        )
+
     # 2. Dual Search
     # Dense Search
     dense_hits = client._client.search(
         collection_name=COLLECTION_NAME,
         query_vector=("dense", dense_vector),
+        query_filter=query_filter,
         limit=20,
         with_payload=True
     )
@@ -86,6 +99,7 @@ def hybrid_search_and_rerank(query: str, top_k: int = 5):
             name="sparse",
             vector=sparse_vector
         ),
+        query_filter=query_filter,
         limit=20,
         with_payload=True
     )
