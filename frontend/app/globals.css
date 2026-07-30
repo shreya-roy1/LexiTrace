@@ -143,3 +143,24 @@ body {
 *::-webkit-scrollbar-thumb:hover {
   background: rgba(56, 189, 248, 0.4);
 }
+
+/* Style native option dropdown in dark/light modes */
+select option {
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.dark select option {
+  background-color: #0F172A;
+  color: #F1F5F9;
+}
+
+/* Hide number input spinners globally */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
