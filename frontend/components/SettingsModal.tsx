@@ -35,6 +35,25 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     }
   }, [isOpen]);
 
+  const syncSettingsToBackend = async (model: string, nli: boolean) => {
+    try {
+      const activeReranker = localStorage.getItem("rag_reranker") || "bge-reranker-large";
+      await fetch("http://localhost:8000/api/settings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          reranker_model: activeReranker,
+          nli_required: nli,
+          llm_model: model,
+        }),
+      });
+    } catch (e) {
+      console.error("Failed to sync settings to backend:", e);
+    }
+  };
+
   const modelVal = parentModel !== undefined ? parentModel : localModel;
   const setModelVal = (val: string) => {
     if (parentSetModel) {
@@ -43,6 +62,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       setLocalModel(val);
       localStorage.setItem("rag_model", val);
     }
+    syncSettingsToBackend(val, nliVal);
   };
 
   const nliVal = parentNliRequired !== undefined ? parentNliRequired : localNli;
@@ -53,6 +73,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       setLocalNli(val);
       localStorage.setItem("rag_nli", String(val));
     }
+    syncSettingsToBackend(modelVal, val);
   };
 
   if (!isOpen) return null;
