@@ -147,13 +147,43 @@ function ChatPageContent() {
   const [selectedDoc, setSelectedDoc] = useState<DocumentInfo | null>(null);
   const [selectedDocIndex, setSelectedDocIndex] = useState<number | null>(null);
 
-  // Theme and Sidebar collapse states
+  // Theme and Sidebar collapse/resize states
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarWidth, setSidebarWidth] = useState(256);
+  const [isResizing, setIsResizing] = useState(false);
+
+  const startResizing = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  };
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Mouse drag handler for resizable sidebar
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return;
+      const newWidth = Math.max(180, Math.min(450, e.clientX));
+      setSidebarWidth(newWidth);
+      localStorage.setItem("sidebar_width", String(newWidth));
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    if (isResizing) {
+      window.addEventListener("mousemove", handleMouseMove);
+      window.addEventListener("mouseup", handleMouseUp);
+    }
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isResizing]);
 
   // Theme & Sidebar Sync on mount
   useEffect(() => {
@@ -163,6 +193,12 @@ function ChatPageContent() {
     const savedSidebar = localStorage.getItem("sidebar_open");
     if (savedSidebar === "false") {
       setSidebarOpen(false);
+    }
+    
+    // Retrieve sidebar width preference
+    const savedWidth = localStorage.getItem("sidebar_width");
+    if (savedWidth) {
+      setSidebarWidth(parseInt(savedWidth));
     }
     
     const storedTheme = localStorage.getItem("theme");
