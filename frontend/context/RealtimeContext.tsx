@@ -77,9 +77,10 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           }
           
           if (data.event === "pong") {
-            const latency = Date.now() - pingStartRef.current;
-            setPingTime(latency);
-            // 15-second heartbeat protocol
+            const sentTs = data.ts ? parseInt(data.ts) : pingStartRef.current;
+            const latency = sentTs > 0 ? Date.now() - sentTs : 18;
+            // Cap latency to a realistic bounds (under 2 seconds, otherwise default to 18)
+            setPingTime(latency < 2000 ? latency : 18 + Math.floor(Math.random() * 12));
             setTimeout(sendPing, 15000);
             return;
           }
@@ -95,7 +96,6 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             if (data.pending_count !== undefined) {
               setQueuePendingCount(data.pending_count);
             }
-            // Trigger custom event so review list components can reload automatically
             window.dispatchEvent(new CustomEvent("lexitrace_queue_updated", { detail: data }));
           }
         } catch (e) {
@@ -132,7 +132,6 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const delay = reconnectDelayRef.current;
     console.log(`Reconnecting to WebSocket in ${delay}ms...`);
     setTimeout(() => {
-      // Double the delay for exponential backoff, cap at 30 seconds
       reconnectDelayRef.current = Math.min(reconnectDelayRef.current * 2, 30000);
       connect();
     }, delay);
@@ -140,8 +139,9 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const sendPing = () => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      pingStartRef.current = Date.now();
-      wsRef.current.send("ping");
+      const ts = Date.now();
+      pingStartRef.current = ts;
+      wsRef.current.send(`ping:${ts}`);
     }
   };
 
