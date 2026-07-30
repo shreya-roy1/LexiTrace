@@ -25,6 +25,7 @@ import dynamic from "next/dynamic";
 
 function StatusPageContent() {
   const { isConnected, pingTime, queuePendingCount, systemMetrics } = useRealtime();
+  const systemAlertsCount = queuePendingCount > 0 ? 1 : 0;
 
   const [theme, setTheme] = useState<"light" | "dark">("dark");
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -107,7 +108,11 @@ function StatusPageContent() {
                 <Activity className="w-5 h-5 text-interactive-accent" />
                 <span>System Status</span>
               </span>
-              <span className="px-2 py-0.5 rounded-full bg-critical-bg text-critical-text text-[10px] font-bold shadow-sm">2</span>
+              {systemAlertsCount > 0 && (
+                <span className="px-2 py-0.5 rounded-full bg-critical-bg text-critical-text text-[10px] font-bold shadow-sm">
+                  {systemAlertsCount}
+                </span>
+              )}
             </Link>
           </nav>
         </div>
@@ -253,8 +258,8 @@ function StatusPageContent() {
                 <span className="p-2 rounded-lg bg-secondary-accent-bg text-secondary-accent-text">
                   <Cpu className="w-5 h-5" />
                 </span>
-                <span className="text-[10px] font-bold text-text-primary bg-citation-std-bg px-2 py-0.5 rounded-full">
-                  BAAI/bge
+                <span className="text-[10px] font-bold text-text-primary bg-citation-std-bg px-2 py-0.5 rounded-full uppercase">
+                  {activeModel === "bge-reranker-large" ? "BAAI/bge" : activeModel === "cohere-rerank-v3" ? "Cohere Rerank v3" : "No Reranking"}
                 </span>
               </div>
               <div className="space-y-1">
@@ -304,7 +309,7 @@ function StatusPageContent() {
           {/* Active System Alerts Card Table */}
           <div className="bg-bg-surface rounded-xl border border-border-subtle shadow-xs overflow-hidden">
             <div className="p-5 border-b border-border-subtle bg-bg-sidebar">
-              <h3 className="font-bold text-text-primary text-sm tracking-wide">Active System Alerts ({queuePendingCount > 0 ? "2" : "1"})</h3>
+              <h3 className="font-bold text-text-primary text-sm tracking-wide">Active System Alerts ({systemAlertsCount})</h3>
               <p className="text-[10px] text-text-secondary mt-0.5">Warnings and notices identified during indexing and document alignment check.</p>
             </div>
             
