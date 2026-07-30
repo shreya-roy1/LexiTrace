@@ -21,7 +21,8 @@ import {
   Search,
   Zap,
   ShieldCheck,
-  Settings
+  Settings,
+  Paperclip
 } from "lucide-react";
 import { SettingsModal } from "../../components/SettingsModal";
 import dynamic from "next/dynamic";
@@ -1033,22 +1034,43 @@ function ChatPageContent() {
             </div>
           )}
 
-          {/* Document Upload Container */}
-          <div 
-            className="border border-dashed border-border-subtle hover:border-interactive-accent/50 rounded-xl p-3 bg-bg-sidebar/35 hover:bg-bg-surface transition-all flex items-center justify-between gap-3 cursor-pointer select-none"
-            onClick={() => {
-              const fileInput = document.getElementById("file-upload-input");
-              if (fileInput) fileInput.click();
-            }}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={async (e) => {
+          {/* Minimal Upload Ingestion Progress Row */}
+          {(uploadStep !== null || uploadStatus) && (
+            <div className="flex items-center justify-between gap-4 bg-bg-canvas px-4 py-2 rounded-lg border border-border-subtle text-xs animate-[fadeIn_0.3s_ease-out] shadow-sm">
+              <div className="flex items-center gap-2">
+                <FileText className="w-4 h-4 text-interactive-accent animate-pulse" />
+                <span className="font-semibold text-text-primary">
+                  {uploadStatus || (
+                    uploadStep === 1 ? "Uploading Document..." :
+                    uploadStep === 2 ? "Parsing Document Layout (OCR)..." :
+                    uploadStep === 3 ? "Generating Vector Embeddings..." : "Indexing Complete!"
+                  )}
+                </span>
+              </div>
+              {uploadStep !== null && (
+                <div className="flex items-center gap-2">
+                  <div className="w-24 bg-border-subtle h-1.5 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-1.5 rounded-full transition-all duration-300 ${
+                        uploadStep === 4 ? "bg-emerald-500" : "bg-interactive-accent animate-pulse"
+                      }`}
+                      style={{ width: `${uploadStep * 25}%` }}
+                    />
+                  </div>
+                  <span className="font-mono font-bold text-[10px] text-text-secondary">{uploadStep * 25}%</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          <form
+            onSubmit={(e) => {
               e.preventDefault();
-              const files = e.dataTransfer.files;
-              if (files && files.length > 0) {
-                await handleFileUpload(files[0]);
-              }
+              handleSend(input);
             }}
+            className="relative flex items-center bg-bg-surface border border-border-subtle rounded-xl p-1 shadow-xs focus-within:border-interactive-accent focus-within:ring-1 focus-within:ring-interactive-accent transition-all"
           >
+            {/* Hidden File Input */}
             <input 
               id="file-upload-input" 
               type="file" 
@@ -1061,57 +1083,26 @@ function ChatPageContent() {
                 }
               }}
             />
-            <div className="flex items-center gap-2.5">
-              <span className="p-1.5 rounded-lg bg-secondary-accent-bg text-secondary-accent-text text-xs">
-                <FileText className="w-4 h-4" />
-              </span>
-              <div className="flex flex-col text-left">
-                <span className="text-xs font-bold text-text-primary">+ Upload Document</span>
-                <span className="text-[10px] text-text-secondary">Drag and drop or click to ingest a file directly into RAG context</span>
-              </div>
-            </div>
-            {uploadStep !== null ? (
-              <div className="w-48 flex flex-col gap-1 text-right">
-                <div className="flex justify-between text-[9px] font-bold text-text-secondary">
-                  <span>
-                    {uploadStep === 1 && "Uploading..."}
-                    {uploadStep === 2 && "Parsing OCR..."}
-                    {uploadStep === 3 && "Embedding..."}
-                    {uploadStep === 4 && "Indexed!"}
-                  </span>
-                  <span className="font-mono text-[#3B82F6]">{uploadStep * 25}%</span>
-                </div>
-                <div className="w-full bg-border-subtle h-1 rounded-full overflow-hidden">
-                  <div 
-                    className={`h-1 rounded-full transition-all duration-300 ${
-                      uploadStep === 4 ? "bg-emerald-500" : "bg-[#3B82F6] animate-pulse"
-                    }`}
-                    style={{ width: `${uploadStep * 25}%` }}
-                  />
-                </div>
-              </div>
-            ) : (
-              uploadStatus && (
-                <span className="text-[10px] font-semibold text-[#3B82F6] animate-pulse">
-                  {uploadStatus}
-                </span>
-              )
-            )}
-          </div>
+            
+            {/* Sleek attachment paperclip button */}
+            <button
+              type="button"
+              onClick={() => {
+                const fileInput = document.getElementById("file-upload-input");
+                if (fileInput) fileInput.click();
+              }}
+              className="pl-3 pr-2 py-3.5 text-text-secondary hover:text-text-primary transition-all cursor-pointer flex items-center justify-center shrink-0"
+              title="Upload Document"
+            >
+              <Paperclip className="w-5 h-5" />
+            </button>
 
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleSend(input);
-            }}
-            className="relative flex items-center bg-bg-surface border border-border-subtle rounded-xl p-1 shadow-xs focus-within:border-interactive-accent focus-within:ring-1 focus-within:ring-interactive-accent transition-all"
-          >
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Ask a question about financial or system documentation..."
-              className="flex-1 bg-transparent border-0 outline-none text-text-primary text-sm pl-4 pr-12 py-3.5 placeholder-text-secondary"
+              className="flex-1 bg-transparent border-0 outline-none text-text-primary text-sm pl-2 pr-12 py-3.5 placeholder-text-secondary"
             />
             <button
               type="submit"
