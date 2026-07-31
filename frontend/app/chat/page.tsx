@@ -24,7 +24,9 @@ import {
   Settings,
   Paperclip,
   Layers,
-  Menu
+  Menu,
+  Trash2,
+  Share2
 } from "lucide-react";
 import { SettingsModal } from "../../components/SettingsModal";
 import dynamic from "next/dynamic";
@@ -213,6 +215,37 @@ function ChatPageContent() {
       document.documentElement.classList.add(initialTheme);
       document.documentElement.classList.remove(initialTheme === "dark" ? "light" : "dark");
     }
+
+    // Load thread ID from URL search param if present on mount
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      const threadIdParam = urlParams.get("thread");
+      if (threadIdParam) {
+        setThreads(prev => {
+          const exists = prev.some(t => t.id === threadIdParam);
+          if (exists) {
+            return prev;
+          } else {
+            return [
+              ...prev,
+              {
+                id: threadIdParam,
+                title: "Shared Query Thread",
+                messages: [
+                  {
+                    id: "welcome-shared",
+                    role: "assistant",
+                    text: "Viewing shared thread context. Feel free to continue the conversation!",
+                    timestamp: new Date()
+                  }
+                ]
+              }
+            ];
+          }
+        });
+        setActiveThreadId(threadIdParam);
+      }
+    }
   }, []);
 
   const toggleTheme = () => {
@@ -229,6 +262,53 @@ function ChatPageContent() {
       localStorage.setItem("sidebar_open", String(next));
       return next;
     });
+  };
+
+  // Sync active thread ID into the page URL query parameters dynamically
+  useEffect(() => {
+    if (typeof window !== "undefined" && activeThreadId) {
+      const url = new URL(window.location.href);
+      url.searchParams.set("thread", activeThreadId);
+      window.history.replaceState({}, "", url.toString());
+    }
+  }, [activeThreadId]);
+
+  const handleShareThread = (threadId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (typeof window !== "undefined") {
+      const shareUrl = `${window.location.origin}/chat?thread=${threadId}`;
+      navigator.clipboard.writeText(shareUrl);
+      setUploadStatus("Share link copied to clipboard!");
+      setTimeout(() => setUploadStatus(null), 3000);
+    }
+  };
+
+  const handleDeleteThread = (threadId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (threads.length <= 1) {
+      // Create a new empty default thread if it is the last one being deleted
+      const emptyThread = {
+        id: "thread-" + Math.random().toString(36).substring(2, 9),
+        title: "New Query Thread",
+        messages: [
+          {
+            id: "welcome",
+            role: "assistant" as const,
+            text: "Hello! I am LexiTrace's enterprise RAG assistant. Ask me questions about your corporate documents. For example: 'What are the Q3 financial metrics?' or 'What are the product development costs?'",
+            timestamp: new Date()
+          }
+        ]
+      };
+      setThreads([emptyThread]);
+      setActiveThreadId(emptyThread.id);
+      return;
+    }
+
+    const nextThreads = threads.filter(t => t.id !== threadId);
+    setThreads(nextThreads);
+    if (activeThreadId === threadId) {
+      setActiveThreadId(nextThreads[0].id);
+    }
   };
 
   // Auto scroll to bottom of chat
@@ -836,17 +916,33 @@ function ChatPageContent() {
               {threads.map(t => {
                 const isActive = t.id === activeThreadId;
                 return (
-                  <button
+                  <div
                     key={t.id}
                     onClick={() => setActiveThreadId(t.id)}
-                    className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-all truncate font-medium cursor-pointer ${
+                    className={`group w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-all font-medium cursor-pointer ${
                       isActive 
                         ? "bg-bg-surface text-text-primary border-l-2 border-interactive-accent font-bold shadow-xs" 
                         : "text-text-secondary hover:bg-bg-surface/50 hover:text-text-primary"
                     }`}
                   >
-                    {t.title}
-                  </button>
+                    <span className="truncate flex-1 pr-2">{t.title}</span>
+                    <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={(e) => handleShareThread(t.id, e)}
+                        className="p-1 rounded hover:bg-bg-sidebar text-text-secondary hover:text-interactive-accent transition-all cursor-pointer"
+                        title="Share link"
+                      >
+                        <Share2 className="w-3 h-3" />
+                      </button>
+                      <button
+                        onClick={(e) => handleDeleteThread(t.id, e)}
+                        className="p-1 rounded hover:bg-bg-sidebar text-text-secondary hover:text-critical-text transition-all cursor-pointer"
+                        title="Delete thread"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
                 );
               })}
             </div>
