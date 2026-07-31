@@ -46,12 +46,12 @@ graph TD
 * **Unified Connection State Alerting:** Avoids visual noise by condensing offline status warnings into a single, sleek banner with immediate auto-reconnection indicators.
 * **Queue Invalidation via WebSockets:** When a document segment is verified or corrected by an administrator, the item disappears from all connected dashboards instantly without requiring page refreshes.
 * **Citation Drawer Inspector:** Displays page boundaries, NLI match status, confidence metrics, and offers structured options to edit extracted document text before ingestion.
+
 ### 4. Resizable Workspace & Premium Dark Mode UI
 * **Drag-to-Resize Navigation Sidebar:** A custom mouse-drag handler lets administrators resize the left navigation sidebar horizontally between `180px` and `450px`. The sidebar can also be collapsed completely to maximize screen space. Workspace preferences are persisted in `localStorage`.
 * **High-Contrast Brand Header:** Fully optimized glowing cyan logo assets visible across both dark and light modes.
 * **Query Thread Management & Shareable Links:** Active search history threads can be individually shared or deleted. Sharing a thread copies a deep link to the clipboard mapping the thread parameter directly (e.g., `/chat?thread=thread-id`), which auto-resolves on mount.
 * **Native Component Re-skinning & Parameter Bounds:** Custom CSS overrides style browser select dropdowns and hide number spinner controls. Strict user limits are enforced in the Settings panel (Chunk Size: 100 - 3000, Top-K: 1 - 50) checking and clamping values dynamically.
-
 
 ---
 
@@ -149,3 +149,5 @@ Configure these in the `.env` file at the root directory:
 | `QDRANT_URL` | Local or remote url for vector database | `http://localhost:6333` |
 | `REDIS_URL` | URL connection string for semantic cache | `redis://localhost:6379/0` |
 | `PORT` | API server listen port | `8000` |
+
+---
