@@ -88,13 +88,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   const handleChunkSizeChange = (val: number) => {
-    setChunkSize(val);
-    localStorage.setItem("rag_chunk_size", String(val));
+    if (isNaN(val)) return;
+    let clamped = val;
+    if (val > 3000) clamped = 3000;
+    setChunkSize(clamped);
+    localStorage.setItem("rag_chunk_size", String(clamped));
   };
 
   const handleTopKChange = (val: number) => {
-    setTopK(val);
-    localStorage.setItem("rag_top_k", String(val));
+    if (isNaN(val)) return;
+    let clamped = val;
+    if (val > 50) clamped = 50;
+    setTopK(clamped);
+    localStorage.setItem("rag_top_k", String(clamped));
   };
 
   const handleTempChange = (val: number) => {
@@ -190,12 +196,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <div className="flex items-center justify-between gap-4 p-3 rounded-xl bg-bg-sidebar/50 border border-border-subtle/50">
               <div className="flex flex-col">
                 <span className="text-xs font-semibold text-text-primary">Default Chunk Size</span>
-                <span className="text-[10px] text-text-secondary mt-0.5">Tokens per indexed block</span>
+                <span className="text-[10px] text-text-secondary mt-0.5">Tokens per indexed block (100-3000)</span>
               </div>
               <input
                 type="number"
-                value={chunkSize}
-                onChange={(e) => handleChunkSizeChange(parseInt(e.target.value) || 500)}
+                value={chunkSize || ""}
+                onChange={(e) => handleChunkSizeChange(parseInt(e.target.value) || 0)}
+                onBlur={() => {
+                  if (chunkSize < 100) {
+                    setChunkSize(100);
+                    localStorage.setItem("rag_chunk_size", "100");
+                  }
+                }}
+                min="100"
+                max="3000"
                 className="w-20 bg-bg-surface border border-border-subtle rounded-lg px-2 py-1 text-xs text-text-primary text-right focus:outline-none focus:border-interactive-accent font-medium"
               />
             </div>
@@ -204,12 +218,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <div className="flex items-center justify-between gap-4 p-3 rounded-xl bg-bg-sidebar/50 border border-border-subtle/50">
               <div className="flex flex-col">
                 <span className="text-xs font-semibold text-text-primary">Max Retrieval Top-K</span>
-                <span className="text-[10px] text-text-secondary mt-0.5">Documents loaded to context</span>
+                <span className="text-[10px] text-text-secondary mt-0.5">Documents loaded to context (1-50)</span>
               </div>
               <input
                 type="number"
-                value={topK}
-                onChange={(e) => handleTopKChange(parseInt(e.target.value) || 5)}
+                value={topK || ""}
+                onChange={(e) => handleTopKChange(parseInt(e.target.value) || 0)}
+                onBlur={() => {
+                  if (topK < 1) {
+                    setTopK(1);
+                    localStorage.setItem("rag_top_k", "1");
+                  }
+                }}
+                min="1"
+                max="50"
                 className="w-20 bg-bg-surface border border-border-subtle rounded-lg px-2 py-1 text-xs text-text-primary text-right focus:outline-none focus:border-interactive-accent font-medium"
               />
             </div>
