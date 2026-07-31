@@ -608,8 +608,21 @@ function ReviewPageContent() {
                       <label className="block text-[10px] text-slate-500 dark:text-slate-450 font-bold mb-1.5 uppercase tracking-wide">Page Number</label>
                       <input 
                         type="number" 
-                        value={editedPage}
-                        onChange={(e) => setEditedPage(Number(e.target.value))}
+                        value={editedPage || ""}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value);
+                          if (!isNaN(val)) {
+                            setEditedPage(val);
+                          } else {
+                            setEditedPage(0);
+                          }
+                        }}
+                        onBlur={() => {
+                          if (editedPage < 1) {
+                            setEditedPage(1);
+                          }
+                        }}
+                        min="1"
                         className="w-full bg-bg-surface border border-border-subtle rounded-lg px-3 py-2.5 text-sm text-text-primary focus:outline-none focus:border-interactive-accent shadow-inner"
                       />
                     </div>
