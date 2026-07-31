@@ -41,6 +41,10 @@ graph TD
 * **Ping-Pong Latency Telemetry:** A 15-second heartbeat loop updates the `/status` telemetry panel in real-time with actual socket latency measurements (e.g. `WebSocket Ping: 12ms`).
 * **Optimistic UI Updates:** Approving document segments in the HITL Queue immediately removes them from the frontend state. If the server fails to write to Qdrant, the state is rolled back and a warning toast notification is shown.
 
+### 3. Advanced Interface & Layout Control
+* **Persistent, Collapsible & Resizable Sidebar Layout:** The left navigation sidebar features full mouse-drag resizing constraints (`180px` – `450px`). Users can drag the sidebar border or fully collapse/hide it out of the viewport with smooth fading transitions. Layout preferences (width, collapse status) are synchronized and stored inside `localStorage` to persist across pages.
+* **Neomorphic Glowing Brand Elements:** The visual headers feature customized glowing cyan glassmorphism vectors for maximum high-contrast legibility in both dark and light modes.
+
 ---
 
 ## Technology Stack
