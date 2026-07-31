@@ -41,6 +41,12 @@ graph TD
 * **Ping-Pong Latency Telemetry:** A 15-second heartbeat loop updates the `/status` telemetry panel in real-time with actual socket latency measurements (e.g. `WebSocket Ping: 12ms`).
 * **Optimistic UI Updates:** Approving document segments in the HITL Queue immediately removes them from the frontend state. If the server fails to write to Qdrant, the state is rolled back and a warning toast notification is shown.
 
+### 3. Human-In-The-Loop (HITL) & Interactive Operations
+* **Direct Document Ingestion:** Users can drag-and-drop or select PDF batches directly within the chat panel. A multi-phase interactive progress loader displays text extraction, parsing, vector indexing, and registry steps in real-time.
+* **Unified Connection State Alerting:** Avoids visual noise by condensing offline status warnings into a single, sleek banner with immediate auto-reconnection indicators.
+* **Queue Invalidation via WebSockets:** When a document segment is verified or corrected by an administrator, the item disappears from all connected dashboards instantly without requiring page refreshes.
+* **Citation Drawer Inspector:** Displays page boundaries, NLI match status, confidence metrics, and offers structured options to edit extracted document text before ingestion.
+
 ---
 
 ## Technology Stack
